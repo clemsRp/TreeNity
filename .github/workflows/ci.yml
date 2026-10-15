@@ -38,4 +38,4 @@ jobs:
       - name: Run a multi-line script
         run: |
           echo Run gitinette,
-          ${{ env.GITINETTE }}
+          python3 ${{ env.GITINETTE }} --base-branch HEAD
