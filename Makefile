@@ -1,0 +1,81 @@
+
+MAKEFLAGS += --no-print-directory
+
+# Rules
+all: server client
+
+# Build
+install:
+	@echo "Downloading dependencies..."
+	@go mod download
+	@go mod tidy
+
+server:
+	@echo "Building Server"
+	@go build -o server ./src/server
+	@echo "Build completed"
+	
+client:
+	@echo "Building Client"
+	@go build -o client ./src/client
+	@echo "Build completed"
+
+# Tests
+test:
+	@echo "Running tests..."
+# TODO
+# @go test $(TESTS_DIR)/test-dir/... \
+#		 -count=1
+
+test-race:
+	@echo "Running race tests..."
+# TODO
+# @go test -race $(TESTS_DIR)/test-dir/... \
+# 		 -count=1
+
+test-strict:
+	@echo "Test eveything..."
+	@$(MAKE) test
+	@$(MAKE) test-race
+	@echo "All tests passed successfully...."
+
+# Manage project
+re:
+	@$(MAKE) clean
+	@$(MAKE) all
+
+format:
+	@echo "Format code..."
+	@go fmt ./...
+	@echo "Linting code..."
+	@go vet ./...
+
+lint:
+	@echo "Static check code..."
+	@PATH="$$PATH:$$(go env GOPATH)/bin" which staticcheck >/dev/null 2>&1 && PATH="$$PATH:$$(go env GOPATH)/bin" staticcheck ./... || true
+	@echo "Check lint..."
+	@test -z "$(gofmt -l src)" || (echo "Error: Incorrect lint !" && exit 1)
+
+gitinette:
+	@./utils/gitinette
+
+check:
+	@echo "Running full project check..."
+	@$(MAKE) gitinette
+	@$(MAKE) format
+	@$(MAKE) lint
+	@$(MAKE) re
+	@$(MAKE) test-strict
+	@$(MAKE) clean
+	@echo "All checks passed successfully."
+
+stats:
+	@echo "Go files: $$(find . -name "*.go" -type f | wc -l)"
+	@echo "Total lines: $$(find . -name "*.go" -type f -exec cat {} + | wc -l)"
+
+# Clean
+clean:
+	@rm -rf server client
+
+
+.PHONY: all install server client test test-race test-strict re format lint gitinette check stats clean
