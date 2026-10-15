@@ -21,4 +21,4 @@ jobs:
           fetch-depth: 0
 
       - name: Run gitinette
-        run: python3 .github/utils/gitinette --base-branch HEAD
+        run: python3 utils/gitinette --base-branch HEAD
