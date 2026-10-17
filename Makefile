@@ -3,6 +3,7 @@ MAKEFLAGS += --no-print-directory
 
 # Rules
 all: server client
+	@echo "Build completed"
 
 # Build
 install:
@@ -12,13 +13,11 @@ install:
 
 server:
 	@echo "Building Server"
-	@go build -o server ./src/server
-	@echo "Build completed"
+	@go build -o server ./src/cmd/server
 	
 client:
 	@echo "Building Client"
-	@go build -o client ./src/client
-	@echo "Build completed"
+	@go build -o client ./src/cmd/client
 
 # Tests
 test:
