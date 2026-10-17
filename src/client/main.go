@@ -25,7 +25,7 @@ func (c *Client) Connect(entrypoint string) error {
 
 func (c *Client) HandleCommand() error {
 	// Get kong context
-	ctx, err := c.GetContext()
+	ctx, err := c.GetContext(os.Args[1:])
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (c *Client) HandleCommand() error {
 	return res
 }
 
-func (c *Client) GetContext() (*kong.Context, error) {
+func (c *Client) GetContext(args []string) (*kong.Context, error) {
 	// Create kong parser
 	parser, err := kong.New(&pr.CLI,
 		kong.Name("client"),
@@ -68,7 +68,7 @@ func (c *Client) GetContext() (*kong.Context, error) {
 	}
 
 	// Parse arguments
-	ctx, err := parser.Parse(os.Args[1:])
+	ctx, err := parser.Parse(args)
 	if err != nil {
 		return nil, err
 	}
