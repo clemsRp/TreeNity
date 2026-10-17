@@ -1,8 +1,11 @@
 
 MAKEFLAGS += --no-print-directory
 
+TESTS_DIR := ./src/tests
+
 # Rules
 all: server client
+	@echo "Build completed"
 
 # Build
 install:
@@ -12,26 +15,20 @@ install:
 
 server:
 	@echo "Building Server"
-	@go build -o server ./src/server
-	@echo "Build completed"
+	@go build -o server ./src/cmd/server
 	
 client:
 	@echo "Building Client"
-	@go build -o client ./src/client
-	@echo "Build completed"
+	@go build -o client ./src/cmd/client
 
 # Tests
 test:
 	@echo "Running tests..."
-# TODO
-# @go test $(TESTS_DIR)/test-dir/... \
-#		 -count=1
+	@go test $(TESTS_DIR)/parsing/... -count=1
 
 test-race:
 	@echo "Running race tests..."
-# TODO
-# @go test -race $(TESTS_DIR)/test-dir/... \
-# 		 -count=1
+	@go test -race $(TESTS_DIR)/parsing/... -count=1
 
 test-strict:
 	@echo "Test eveything..."
