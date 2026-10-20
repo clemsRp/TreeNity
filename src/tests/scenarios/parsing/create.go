@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ParsingCreateScenarios = []sce.Scenario{
+	ParsingCreateScenarios = []sce.BasicScenario{
 		// Create tests
 		{
 			Name:    "Create - Valid topic",

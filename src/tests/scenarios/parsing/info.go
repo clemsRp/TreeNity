@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ParsingInfoScenarios = []sce.Scenario{
+	ParsingInfoScenarios = []sce.BasicScenario{
 		// Info tests
 		{
 			Name:    "Info - Get valid info",

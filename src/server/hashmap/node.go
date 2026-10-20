@@ -12,13 +12,17 @@ func (n *Node) Append(key string, value any) int {
 	if n.Key == key {
 		n.Value = value
 		return 0
+	}
 
-	} else if n.Next != nil {
+	if n.Next != nil {
 		return n.Next.Append(key, value)
 	}
 
-	n.Key = key
-	n.Value = value
+	n.Next = &Node{
+		Key:   key,
+		Value: value,
+		Next:  nil,
+	}
 
 	return 1
 }

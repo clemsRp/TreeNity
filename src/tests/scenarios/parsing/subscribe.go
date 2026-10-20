@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ParsingSubscribeScenarios = []sce.Scenario{
+	ParsingSubscribeScenarios = []sce.BasicScenario{
 		// Subscribe tests
 		{
 			Name:    "Subscribe - Valid topic and subscriber",

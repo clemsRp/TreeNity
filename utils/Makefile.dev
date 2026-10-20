@@ -2,6 +2,8 @@
 MAKEFLAGS += --no-print-directory
 
 TESTS_DIR := ./src/tests
+TESTS := $(TESTS_DIR)/parsing/... \
+		 $(TESTS_DIR)/hashmap/...
 
 # Rules
 all: server client
@@ -24,11 +26,11 @@ client:
 # Tests
 test:
 	@echo "Running tests..."
-	@go test $(TESTS_DIR)/parsing/... -count=1
+	@go test $(TESTS) -count=1
 
 test-race:
 	@echo "Running race tests..."
-	@go test -race $(TESTS_DIR)/parsing/... -count=1
+	@go test -race $(TESTS) -count=1
 
 test-strict:
 	@echo "Test eveything..."
@@ -54,7 +56,7 @@ lint:
 	@test -z "$(gofmt -l src)" || (echo "Error: Incorrect lint !" && exit 1)
 
 gitinette:
-	@./utils/gitinette
+	@./.github/workflows/gitinette
 
 check:
 	@echo "Running full project check..."

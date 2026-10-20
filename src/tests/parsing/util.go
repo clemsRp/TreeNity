@@ -7,7 +7,7 @@ import (
 	sce "treenity/src/tests/scenarios"
 )
 
-func UtilTestScenario(t *testing.T, c *client.Client, tests []sce.Scenario) {
+func UtilTestScenario(t *testing.T, c *client.Client, tests []sce.BasicScenario) {
 	for _, tt := range tests {
 		t.Run(tt.Name, func(t *testing.T) {
 			// Split command

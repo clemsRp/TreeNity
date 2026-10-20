@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ParsingGlobalScenarios = []sce.Scenario{
+	ParsingGlobalScenarios = []sce.BasicScenario{
 		// Global test
 		{
 			Name:    "Global - Invalid number of arguments (missing command)",
