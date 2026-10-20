@@ -5,7 +5,7 @@ import (
 )
 
 var (
-	ParsingListScenarios = []sce.Scenario{
+	ParsingListScenarios = []sce.BasicScenario{
 		// List tests
 		{
 			Name:    "List - Valid list",
