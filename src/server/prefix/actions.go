@@ -1,12 +1,17 @@
 package prefix
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	pr "treenity/src/protocol"
 )
 
 func (t *Tree) Insert(client *pr.Client) error {
+	if client == nil {
+		return errors.New("Cannot insert nil pointer")
+	}
+
 	return t.InsertClient(client, []rune(client.Prefix))
 }
 
@@ -36,6 +41,10 @@ func (t *Tree) InsertClient(client *pr.Client, prefix []rune) error {
 }
 
 func (t *Tree) Remove(client *pr.Client) error {
+	if client == nil {
+		return errors.New("Cannot remove nil pointer")
+	}
+
 	return t.RemoveClient(client, []rune(client.Prefix))
 }
 

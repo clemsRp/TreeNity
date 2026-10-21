@@ -3,7 +3,8 @@ MAKEFLAGS += --no-print-directory
 
 TESTS_DIR := ./src/tests
 TESTS := $(TESTS_DIR)/parsing/... \
-		 $(TESTS_DIR)/hashmap/...
+		 $(TESTS_DIR)/hashmap/... \
+		 $(TESTS_DIR)/prefix/...
 
 # Rules
 all: server client
