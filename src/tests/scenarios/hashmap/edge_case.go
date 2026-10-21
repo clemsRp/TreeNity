@@ -16,7 +16,6 @@ var EdgeCaseScenarios = []sce.HashmapScenario{
 		Steps: []sce.HashmapStep{
 			{Action: sce.ActionAppend, Key: "keep", Value: "safe"},
 			{Action: sce.ActionLen, WantInt: 1},
-			// Tente de supprimer une clé inexistante -> doit échouer et ne pas modifier Len
 			{Action: sce.ActionDelete, Key: "ghost", WantErr: true},
 			{Action: sce.ActionLen, WantInt: 1},
 			{Action: sce.ActionContains, Key: "keep", WantBool: true},
