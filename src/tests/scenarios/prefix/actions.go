@@ -24,17 +24,6 @@ var (
 
 var ActionsScenarios = []sce.PrefixScenario{
 	{
-		Name: "Basic insert management test",
-		Steps: []sce.PrefixStep{
-			// Test Insertion
-			{Action: sce.PrefixActionInsert, Client: client0, WantErr: false},
-			{Action: sce.PrefixActionInsert, Client: client1, WantErr: false},
-			{Action: sce.PrefixActionInsert, Client: client2, WantErr: false},
-			{Action: sce.PrefixActionInsert, Client: client2, WantErr: true},
-			{Action: sce.PrefixActionInsert, Client: nil, WantErr: true},
-		},
-	},
-	{
 		Name: "Basic remove management test",
 		Steps: []sce.PrefixStep{
 			// Insert clients
@@ -65,6 +54,18 @@ var ActionsScenarios = []sce.PrefixScenario{
 			{Action: sce.PrefixActionFilter, Key: "u", WantClients: []*pr.Client{client2}},
 			{Action: sce.PrefixActionFilter, Key: "", WantClients: []*pr.Client{client2}},
 			{Action: sce.PrefixActionFilter, Key: "nothing", WantClients: []*pr.Client{client2}},
+		},
+	},
+	{
+		Name: "Basic insert management test",
+		Steps: []sce.PrefixStep{
+			// Test Insertion
+			{Action: sce.PrefixActionInsert, Client: client0, WantErr: false},
+			{Action: sce.PrefixActionInsert, Client: client1, WantErr: false},
+			{Action: sce.PrefixActionInsert, Client: client2, WantErr: false},
+			{Action: sce.PrefixActionInsert, Client: client2, CustomPrefix: "salut", WantErr: false},
+			{Action: sce.PrefixActionInsert, Client: client2, WantErr: true},
+			{Action: sce.PrefixActionInsert, Client: nil, WantErr: true},
 		},
 	},
 }

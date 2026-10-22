@@ -3,9 +3,10 @@ package hashmap
 import (
 	"fmt"
 	"os"
+	pr "treenity/src/protocol"
 )
 
-func (h *Hashmap) Append(key string, value any) {
+func (h *Hashmap) Append(key string, value *pr.Client) {
 	// Handle Thread safety
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -24,7 +25,7 @@ func (h *Hashmap) Append(key string, value any) {
 	h.Length += h.Nodes[hash].Append(key, value)
 }
 
-func (h *Hashmap) Get(key string) (any, error) {
+func (h *Hashmap) Get(key string) (*pr.Client, error) {
 	// Handle Thread safety
 	h.mu.Lock()
 	defer h.mu.Unlock()

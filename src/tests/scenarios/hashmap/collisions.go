@@ -6,8 +6,8 @@ var CollisionsScenarios = []sce.HashmapScenario{
 	{
 		Name: "Length and Contains with multiple collisions",
 		Steps: []sce.HashmapStep{
-			{Action: sce.HashmapActionAppend, Key: "hash_a", Value: 10},
-			{Action: sce.HashmapActionAppend, Key: "hash_b", Value: 20},
+			{Action: sce.HashmapActionAppend, Key: "hash_a", Value: "10"},
+			{Action: sce.HashmapActionAppend, Key: "hash_b", Value: "20"},
 			{Action: sce.HashmapActionLen, WantInt: 2},
 			{Action: sce.HashmapActionContains, Key: "hash_a", WantBool: true},
 			{Action: sce.HashmapActionContains, Key: "hash_b", WantBool: true},

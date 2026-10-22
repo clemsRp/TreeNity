@@ -21,7 +21,7 @@ func TestThreadSafe(t *testing.T) {
 			defer wg.Done()
 			for j := range iterations {
 				key := fmt.Sprintf("key-%d-%d", workerID, j)
-				myMap.Append(key, j)
+				myMap.Append(key, nil)
 			}
 		}(i)
 	}

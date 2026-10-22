@@ -8,8 +8,14 @@ import (
 )
 
 func (t *Tree) Insert(client *pr.Client) error {
+	// Handle nil pointers
 	if client == nil {
 		return errors.New("Cannot insert nil pointer")
+	}
+
+	// Handle update
+	if client.PreviousPrefix != client.Prefix {
+		t.RemoveClient(client, []rune(client.PreviousPrefix))
 	}
 
 	return t.InsertClient(client, []rune(client.Prefix))
