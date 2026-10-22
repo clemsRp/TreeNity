@@ -14,7 +14,7 @@ func HandleCmdSubscribe(ctx *kong.Context) error {
 	fmt.Printf("Subscriber: '%s'\n", sub_struct.SubscriberName)
 	fmt.Printf("Raw: '%t'\n", sub_struct.Raw)
 	fmt.Printf("Prefix: '%s'\n", sub_struct.Prefix)
-	fmt.Printf("Offset: '%d'\n", sub_struct.Offset)
+	fmt.Printf("Offset: '%d'\n", *sub_struct.Offset)
 
 	// TODO: Implemente behaviour
 

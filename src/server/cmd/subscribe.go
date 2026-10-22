@@ -19,6 +19,11 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 	client, err = clients.Get(command.SubscriberName)
 
+	// Check subscriber is valid name
+	if !IsValidId(command.SubscriberName) {
+		return "", "", fmt.Errorf("invalid subscriber name '%s', must respect this format `^[a-zA-Z0-9_.-]+$`", command.SubscriberName)
+	}
+
 	// Check subscriber doesn't exist or is reconnecting
 	if err == nil {
 		// Check client is connected
@@ -29,13 +34,15 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		// Update prefix
 		client.PreviousPrefix = client.Prefix
 		client.Prefix = command.Prefix
+		client.IsActive = true
+		client.Topic = command.TopicName
 
 	} else {
 		// Create subscriber
 		client = &pr.Client{
 			Id:       command.SubscriberName,
 			Topic:    command.TopicName,
-			Offset:   uint32(command.Offset),
+			Offset:   uint32(*command.Offset),
 			Prefix:   command.Prefix,
 			IpcPath:  "TODO",
 			IsActive: true,
