@@ -11,18 +11,26 @@ import (
 func UtilTestAction(t *testing.T, myTree *p.Tree, step sce.PrefixStep) {
 	switch step.Action {
 	case sce.PrefixActionInsert:
+		// Check prefix update
+		if step.CustomPrefix != "" {
+			step.Client.Prefix = step.CustomPrefix
+		}
+
+		// Insert client
 		err := myTree.Insert(step.Client)
 		if (err != nil) != step.WantErr {
 			t.Errorf("Insert() error = %v, WantErr %v", err, step.WantErr)
 		}
 
 	case sce.PrefixActionRemove:
+		// Remove client
 		err := myTree.Remove(step.Client)
 		if (err != nil) != step.WantErr {
 			t.Errorf("Remove() error = %v, WantErr %v", err, step.WantErr)
 		}
 
 	case sce.PrefixActionFilter:
+		// Filter clients
 		clients := myTree.Filter(step.Key)
 		if !SameClients(clients, step.WantClients) {
 			t.Errorf("Filter() with '%s' key, got = %v, want %v", step.Key, clients, step.WantClients)

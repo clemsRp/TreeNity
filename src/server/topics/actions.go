@@ -2,6 +2,7 @@ package topics
 
 import (
 	pr "treenity/src/protocol"
+	p "treenity/src/server/prefix"
 )
 
 func (t *Topics) Create(topic_name string) {
@@ -10,16 +11,19 @@ func (t *Topics) Create(topic_name string) {
 	defer t.mu.Unlock()
 
 	// Create topic
-	t.AllTopics[topic_name] = &pr.Topic{
-		Name:     topic_name,
-		Messages: make([]*pr.Message, 0),
+	t.AllTopics[topic_name] = &TopicDatas{
+		Topic: &pr.Topic{
+			Name:     topic_name,
+			Messages: make([]*pr.Message, 0),
+		},
+		Tree: p.CreateTree(0),
 	}
 
 	// Add topic to topic list
 	t.TopicsList = append(t.TopicsList, topic_name)
 }
 
-func (t *Topics) Get(topic_name string) (*pr.Topic, bool) {
+func (t *Topics) Get(topic_name string) (*TopicDatas, bool) {
 	// Handle Thread safety
 	t.mu.Lock()
 	defer t.mu.Unlock()

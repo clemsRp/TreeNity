@@ -25,7 +25,7 @@ const (
 type HashmapStep struct {
 	Action   HashmapAction
 	Key      string
-	Value    any
+	Value    string
 	Want     any
 	WantErr  bool
 	WantBool bool
@@ -47,11 +47,12 @@ const (
 )
 
 type PrefixStep struct {
-	Action      PrefixAction
-	Key         string
-	Client      *pr.Client
-	WantClients []*pr.Client
-	WantErr     bool
+	Action       PrefixAction
+	Key          string
+	Client       *pr.Client
+	WantClients  []*pr.Client
+	WantErr      bool
+	CustomPrefix string
 }
 
 type PrefixScenario struct {

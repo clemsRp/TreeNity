@@ -1,14 +1,17 @@
 package hashmap
 
-import "fmt"
+import (
+	"fmt"
+	pr "treenity/src/protocol"
+)
 
 type Node struct {
 	Key   string
-	Value any
+	Value *pr.Client
 	Next  *Node
 }
 
-func (n *Node) Append(key string, value any) int {
+func (n *Node) Append(key string, value *pr.Client) int {
 	if n.Key == key {
 		n.Value = value
 		return 0
@@ -27,7 +30,7 @@ func (n *Node) Append(key string, value any) int {
 	return 1
 }
 
-func (n *Node) Get(key string) (any, error) {
+func (n *Node) Get(key string) (*pr.Client, error) {
 	if n.Key == key {
 		return n.Value, nil
 
