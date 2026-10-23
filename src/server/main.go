@@ -1,7 +1,11 @@
 package server
 
 import (
+	"fmt"
+	"io"
+	"os"
 	pr "treenity/src/protocol"
+	"treenity/src/protocol/ipc"
 	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
 )
@@ -20,8 +24,30 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) Start() (int, error) {
-	pid := 1337
+func (s *Server) Start() error {
+	// Get FIFO path
+	pid := os.Getpid()
+	path := fmt.Sprintf("%s%d", pr.EntryPoint, pid)
 
-	return pid, nil
+	fmt.Println(path)
+
+	// Create Server Reader
+	reader, err := ipc.NewReader(path)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	for {
+		line, err := reader.ReadLine()
+		if err != nil {
+			if err == io.EOF {
+				continue
+			}
+			return err
+		}
+
+		// TODO: Handle Command
+		fmt.Printf("Commande reçue : %s\n", string(line))
+	}
 }

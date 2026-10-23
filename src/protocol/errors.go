@@ -2,7 +2,8 @@ package protocol
 
 const (
 	// General Errors
-	ErrCast = "cast error"
+	ErrCast           = "cast error"
+	ErrInvalidCommand = "Invalid command. Need to be: create, list, produce, subscribe or info."
 
 	// Validation Errors
 	ErrInvalidName = "invalid name, must respect format " + ValidRegex
