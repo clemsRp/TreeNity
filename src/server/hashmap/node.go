@@ -38,12 +38,12 @@ func (n *Node) Get(key string) (*pr.Client, error) {
 		return n.Next.Get(key)
 	}
 
-	return nil, fmt.Errorf("'%s' key not found", key)
+	return nil, fmt.Errorf("'%s' %s", key, pr.ErrInvalidKey)
 }
 
 func (n *Node) Delete(key string) (int, error) {
 	if n.Next == nil {
-		return 0, fmt.Errorf("'%s' key not found", key)
+		return 0, fmt.Errorf("'%s' %s", key, pr.ErrInvalidKey)
 	}
 
 	if n.Next.Key == key {

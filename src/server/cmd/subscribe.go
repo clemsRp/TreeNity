@@ -14,21 +14,21 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	// Check topic exist
 	topic, exist := topics.Get(command.TopicName)
 	if !exist {
-		return "", "", fmt.Errorf("'%s' topic does not exist", command.TopicName)
+		return "", "", fmt.Errorf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist)
 	}
 
 	client, err = clients.Get(command.SubscriberName)
 
 	// Check subscriber is valid name
 	if !IsValidId(command.SubscriberName) {
-		return "", "", fmt.Errorf("invalid subscriber name '%s', must respect this format `^[a-zA-Z0-9_.-]+$`", command.SubscriberName)
+		return "", "", fmt.Errorf("'%s' %s", command.SubscriberName, pr.ErrInvalidName)
 	}
 
 	// Check subscriber doesn't exist or is reconnecting
 	if err == nil {
 		// Check client is connected
 		if client.IsActive {
-			return "", "", fmt.Errorf("'%s' subscriber is already active", client.Id)
+			return "", "", fmt.Errorf("'%s' %s", client.Id, pr.ErrSubscriberAlreadyActive)
 		}
 
 		// Update client datas

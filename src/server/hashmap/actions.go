@@ -34,7 +34,7 @@ func (h *Hashmap) Get(key string) (*pr.Client, error) {
 	hash := CalculateHash(key, len(h.Nodes))
 
 	if h.Nodes[hash] == nil {
-		return nil, fmt.Errorf("'%s' key not found", key)
+		return nil, fmt.Errorf("'%s' %s", key, pr.ErrInvalidKey)
 	}
 
 	// Get datas at hash's index
@@ -50,7 +50,7 @@ func (h *Hashmap) Delete(key string) error {
 	hash := CalculateHash(key, len(h.Nodes))
 
 	if h.Nodes[hash] == nil {
-		return fmt.Errorf("'%s' key not found", key)
+		return fmt.Errorf("'%s' %s", key, pr.ErrInvalidKey)
 	}
 
 	// Handle last element
@@ -99,7 +99,7 @@ func (h *Hashmap) Print() {
 		fmt.Fprintf(os.Stderr, "\nCouche num %d\n", deep)
 		curr := h.Nodes[deep]
 		for curr != nil {
-			fmt.Fprintf(os.Stderr, "Key: %s, Value: %s\n", curr.Key, curr.Value)
+			fmt.Fprintf(os.Stderr, "Key: %s, Value: %v\n", curr.Key, curr.Value)
 			curr = curr.Next
 		}
 	}

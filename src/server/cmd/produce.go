@@ -10,7 +10,7 @@ func HandleCmdProduce(command pr.CmdProduceDatas, topics *t.Topics) (string, any
 	// Check topic exist
 	_, exist := topics.Get(command.TopicName)
 	if !exist {
-		return "", "", fmt.Errorf("'%s' topic does not exist", command.TopicName)
+		return "", "", fmt.Errorf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist)
 	}
 
 	return "", "", nil
