@@ -1,12 +1,12 @@
 package client
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"os"
-	"treenity/src/client/cmd"
 	pr "treenity/src/protocol"
-
-	"github.com/alecthomas/kong"
 )
 
 func (c *Client) HandleCommand() error {
@@ -16,63 +16,91 @@ func (c *Client) HandleCommand() error {
 		return err
 	}
 
-	// Handle valid commands
-	var res error
+	// Basics variables
 	i_struct := &pr.CLI.IpcIdentifier
 	ipc := i_struct.IpcIdentifier
 	command := ctx.Selected().Name
 
-	switch command {
-	// Create
-	case pr.CmdCreate:
-		i_struct.Create.IpcIdentifier = ipc
-		res = cmd.HandleCmdCreate(ctx, c.Writer)
+	cmd_struct, err := c.GetCmdStruct(i_struct, ipc, command)
 
-	// List
-	case pr.CmdList:
-		i_struct.List.IpcIdentifier = ipc
-		res = cmd.HandleCmdList(ctx, c.Writer)
-
-	// Produce
-	case pr.CmdProduce:
-		i_struct.Produce.IpcIdentifier = ipc
-		res = cmd.HandleCmdProduce(ctx, c.Writer)
-
-	// Subscribe
-	case pr.CmdSubscribe:
-		i_struct.Subscribe.IpcIdentifier = ipc
-		res = cmd.HandleCmdSubscribe(ctx, c.Writer)
-
-	// Info
-	case pr.CmdInfo:
-		i_struct.Info.IpcIdentifier = ipc
-		res = cmd.HandleCmdInfo(ctx, c.Writer)
-
-	// Handle invalid command
-	default:
-		res = errors.New(pr.ErrInvalidCommand)
-	}
-
-	return res
+	return c.SendRequest(cmd_struct, command)
 }
 
-func (c *Client) GetContext(args []string) (*kong.Context, error) {
-	// Create kong parser
-	parser, err := kong.New(&pr.CLI,
-		kong.Name("client"),
-		kong.Description("Treenity Message Queue System Client"),
-	)
+func (c *Client) GetCmdStruct(i_struct *pr.IpcArgs, ipc, command string) (any, error) {
+	var cmd_struct any
 
-	// Handle initialization error
-	if err != nil {
-		return nil, err
+	switch command {
+	case pr.CmdCreate:
+		i_struct.Create.IpcIdentifier = ipc
+		cmd_struct = i_struct.Create
+
+	case pr.CmdList:
+		i_struct.List.IpcIdentifier = ipc
+		cmd_struct = i_struct.List
+
+	case pr.CmdProduce:
+		i_struct.Produce.IpcIdentifier = ipc
+		cmd_struct = i_struct.Produce
+
+	case pr.CmdSubscribe:
+		i_struct.Subscribe.IpcIdentifier = ipc
+		cmd_struct = i_struct.Subscribe
+
+	case pr.CmdInfo:
+		i_struct.Info.IpcIdentifier = ipc
+		cmd_struct = i_struct.Info
+
+	default:
+		return nil, errors.New(pr.ErrInvalidCommand)
 	}
 
-	// Parse arguments
-	ctx, err := parser.Parse(args)
+	return cmd_struct, nil
+}
+
+func (c *Client) SendRequest(cmd_struct any, command string) error {
+	// Convert cmd_struct to Raw Message
+	rawDatas, err := json.Marshal(cmd_struct)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return ctx, nil
+	// Init request
+	request := pr.ToServer{
+		Command: command,
+		Datas:   json.RawMessage(rawDatas),
+		Path:    c.Path,
+	}
+
+	// Cast request
+	payload, err := json.Marshal(request)
+	if err != nil {
+		return err
+	}
+
+	// Send request to Server
+	err = c.Writer.WriteLine(payload)
+	if err != nil {
+		return err
+	}
+
+	// Wait for response
+
+	line, err := c.Reader.ReadLine()
+	if err != nil {
+		if err == io.EOF {
+			return nil
+		}
+		return err
+	}
+
+	// Cast response
+	var response pr.ToClient
+	json_err := json.Unmarshal(line, &response)
+	if json_err != nil {
+		return json_err
+	}
+
+	fmt.Println(response.Response, response.Err)
+
+	return nil
 }

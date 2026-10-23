@@ -6,7 +6,9 @@ import (
 
 type Client struct {
 	Name   string
+	Path   string
 	Writer *ipc.Writer
+	Reader *ipc.Reader
 }
 
 func NewClient() *Client {
