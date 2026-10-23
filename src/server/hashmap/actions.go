@@ -27,8 +27,8 @@ func (h *Hashmap) Append(key string, value *pr.Client) {
 
 func (h *Hashmap) Get(key string) (*pr.Client, error) {
 	// Handle Thread safety
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 
 	// Get hash
 	hash := CalculateHash(key, len(h.Nodes))
@@ -70,16 +70,16 @@ func (h *Hashmap) Delete(key string) error {
 
 func (h *Hashmap) Len() int {
 	// Handle Thread safety
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 
 	return h.Length
 }
 
 func (h *Hashmap) Contains(key string) bool {
 	// Handle Thread safety
-	h.mu.Lock()
-	defer h.mu.Unlock()
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 
 	// Get hash
 	hash := CalculateHash(key, len(h.Nodes))

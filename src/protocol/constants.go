@@ -7,5 +7,5 @@ const (
 	FnvOffsetBasis = 14695981039346656037
 
 	MaxIdCharacters    = 32
-	ClientsHashmapSize = 25
+	ClientsHashmapSize = 64
 )

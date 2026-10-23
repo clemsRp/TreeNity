@@ -8,6 +8,10 @@ import (
 )
 
 func (t *Tree) Insert(client *pr.Client) error {
+	// Handle Thread safety
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	// Handle nil pointers
 	if client == nil {
 		return errors.New("Cannot insert nil pointer")
@@ -47,6 +51,10 @@ func (t *Tree) InsertClient(client *pr.Client, prefix []rune) error {
 }
 
 func (t *Tree) Remove(client *pr.Client) error {
+	// Handle Thread safety
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
 	if client == nil {
 		return errors.New("Cannot remove nil pointer")
 	}
@@ -91,6 +99,10 @@ func (t *Tree) RemoveClient(client *pr.Client, prefix []rune) error {
 }
 
 func (t *Tree) Filter(key string) []*pr.Client {
+	// Handle Thread safety
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+
 	return t.FilterClient([]rune(key))
 }
 

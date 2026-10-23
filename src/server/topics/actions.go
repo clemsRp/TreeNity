@@ -25,8 +25,8 @@ func (t *Topics) Create(topic_name string) {
 
 func (t *Topics) Get(topic_name string) (*TopicDatas, bool) {
 	// Handle Thread safety
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	// Get topic
 	topic, exist := t.AllTopics[topic_name]
@@ -36,8 +36,8 @@ func (t *Topics) Get(topic_name string) (*TopicDatas, bool) {
 
 func (t *Topics) GetTopicNames() []string {
 	// Handle Thread safety
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
 	// Get topic
 	topics := t.TopicsList
