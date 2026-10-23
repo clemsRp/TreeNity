@@ -31,19 +31,47 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			return "", "", fmt.Errorf("'%s' subscriber is already active", client.Id)
 		}
 
-		// Update prefix
-		client.PreviousPrefix = client.Prefix
-		client.Prefix = command.Prefix
+		// Update client datas
 		client.IsActive = true
-		client.Topic = command.TopicName
+
+		// Remove client from previous topic tree if needed
+		if client.Topic != command.TopicName {
+			if old_topic, exist := topics.Get(client.Topic); exist {
+				old_topic.Tree.Remove(client)
+			}
+			client.Topic = command.TopicName
+		}
+
+		// Update prefix if needed
+		if command.Prefix != nil {
+			client.PreviousPrefix = client.Prefix
+			client.Prefix = *command.Prefix
+		}
+
+		// Update offset if needed
+		if command.Offset != nil {
+			client.Offset = uint32(*command.Offset)
+		}
 
 	} else {
+		// Handle missing offset option
+		offset := uint32(0)
+		if command.Offset != nil {
+			offset = uint32(*command.Offset)
+		}
+
+		// Handle missing prefix option
+		prefix := ""
+		if command.Prefix != nil {
+			prefix = *command.Prefix
+		}
+
 		// Create subscriber
 		client = &pr.Client{
 			Id:       command.SubscriberName,
 			Topic:    command.TopicName,
-			Offset:   uint32(*command.Offset),
-			Prefix:   command.Prefix,
+			Offset:   offset,
+			Prefix:   prefix,
 			IpcPath:  "TODO",
 			IsActive: true,
 		}

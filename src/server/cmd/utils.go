@@ -2,11 +2,10 @@ package cmd
 
 import (
 	"regexp"
-	pr "treenity/src/protocol"
 )
 
-var CheckIdRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]+$`)
+var CheckIdRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,32}$`)
 
 func IsValidId(id string) bool {
-	return CheckIdRegex.MatchString(id) && len(id) <= int(pr.MaxIdCharacters)
+	return CheckIdRegex.MatchString(id)
 }

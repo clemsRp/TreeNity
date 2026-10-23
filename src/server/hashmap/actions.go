@@ -8,8 +8,8 @@ import (
 
 func (h *Hashmap) Append(key string, value *pr.Client) {
 	// Handle Thread safety
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	// Get hash
 	hash := CalculateHash(key, len(h.Nodes))
@@ -43,8 +43,8 @@ func (h *Hashmap) Get(key string) (*pr.Client, error) {
 
 func (h *Hashmap) Delete(key string) error {
 	// Handle Thread safety
-	h.mu.RLock()
-	defer h.mu.RUnlock()
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
 	// Get hash
 	hash := CalculateHash(key, len(h.Nodes))

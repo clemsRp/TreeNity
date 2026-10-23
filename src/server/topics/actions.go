@@ -7,8 +7,8 @@ import (
 
 func (t *Topics) Create(topic_name string) {
 	// Handle Thread safety
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+	t.mu.Lock()
+	defer t.mu.Unlock()
 
 	// Create topic
 	t.AllTopics[topic_name] = &TopicDatas{
