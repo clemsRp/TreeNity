@@ -30,7 +30,7 @@ func (t *Tree) InsertClient(client *pr.Client, prefix []rune) error {
 	if len(prefix) == 0 {
 		// Handle duplication
 		if slices.Contains(t.Clients, client) {
-			return fmt.Errorf("'%s' client is already insert inside Tree", client.Id)
+			return fmt.Errorf("'%s' %s", client.Id, pr.ErrClientAlreadyInserted)
 		}
 
 		// Insert client inside Tree
@@ -68,7 +68,7 @@ func (t *Tree) RemoveClient(client *pr.Client, prefix []rune) error {
 		// Handle missing client
 		index := slices.Index(t.Clients, client)
 		if index == -1 {
-			return fmt.Errorf("'%s' client is not insert inside Tree", client.Id)
+			return fmt.Errorf("'%s' %s", client.Id, pr.ErrClientNotInserted)
 		}
 
 		// Remove client from Tree
@@ -81,7 +81,7 @@ func (t *Tree) RemoveClient(client *pr.Client, prefix []rune) error {
 	next_char := prefix[0]
 	next_tree, ok := t.Children[next_char]
 	if !ok {
-		return fmt.Errorf("'%s' client is not insert inside Tree, imcomplete path", client.Id)
+		return fmt.Errorf("'%s' %s", client.Id, pr.ErrClientNotInserted)
 	}
 
 	// Remove recursively

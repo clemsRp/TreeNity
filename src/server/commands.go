@@ -18,7 +18,7 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		// Cast datas
 		command_datas, ok := command.Datas.(pr.CmdCreateDatas)
 		if !ok {
-			return "", "", errors.New("cast error")
+			return "", "", errors.New(pr.ErrCast)
 		}
 
 		// Run handler
@@ -28,7 +28,7 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		// Cast datas
 		command_datas, ok := command.Datas.(pr.CmdListDatas)
 		if !ok {
-			return "", "", errors.New("cast error")
+			return "", "", errors.New(pr.ErrCast)
 		}
 
 		// Run handler
@@ -38,7 +38,7 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		// Cast datas
 		command_datas, ok := command.Datas.(pr.CmdInfoDatas)
 		if !ok {
-			return "", "", errors.New("cast error")
+			return "", "", errors.New(pr.ErrCast)
 		}
 
 		// Run handler
@@ -48,17 +48,17 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		// Cast datas
 		command_datas, ok := command.Datas.(pr.CmdProduceDatas)
 		if !ok {
-			return "", "", errors.New("cast error")
+			return "", "", errors.New(pr.ErrCast)
 		}
 
 		// Run handler
-		res, datas, err = cmd.HandleCmdProduce(command_datas)
+		res, datas, err = cmd.HandleCmdProduce(command_datas, s.Topics)
 
 	case pr.CmdSubscribe:
 		// Cast datas
 		command_datas, ok := command.Datas.(pr.CmdSubscribeDatas)
 		if !ok {
-			return "", "", errors.New("cast error")
+			return "", "", errors.New(pr.ErrCast)
 		}
 
 		// Run handler
