@@ -27,6 +27,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: ", err.Error())
 		os.Exit(1)
 	}
+	defer c.Disconnect()
 
 	// Handle command
 	err = c.HandleCommand()

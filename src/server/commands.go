@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"errors"
 	pr "treenity/src/protocol"
 	"treenity/src/server/cmd"
@@ -15,9 +16,11 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 	// Handle Command
 	switch command.Command {
 	case pr.CmdCreate:
+		var command_datas pr.CmdCreateDatas
+
 		// Cast datas
-		command_datas, ok := command.Datas.(pr.CmdCreateDatas)
-		if !ok {
+		err := json.Unmarshal(command.Datas, &command_datas)
+		if err != nil {
 			return "", "", errors.New(pr.ErrCast)
 		}
 
@@ -25,9 +28,11 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		res, datas, err = cmd.HandleCmdCreate(command_datas, s.Topics)
 
 	case pr.CmdList:
+		var command_datas pr.CmdListDatas
+
 		// Cast datas
-		command_datas, ok := command.Datas.(pr.CmdListDatas)
-		if !ok {
+		err := json.Unmarshal(command.Datas, &command_datas)
+		if err != nil {
 			return "", "", errors.New(pr.ErrCast)
 		}
 
@@ -35,9 +40,11 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		res, datas, err = cmd.HandleCmdList(command_datas, s.Topics)
 
 	case pr.CmdInfo:
+		var command_datas pr.CmdInfoDatas
+
 		// Cast datas
-		command_datas, ok := command.Datas.(pr.CmdInfoDatas)
-		if !ok {
+		err := json.Unmarshal(command.Datas, &command_datas)
+		if err != nil {
 			return "", "", errors.New(pr.ErrCast)
 		}
 
@@ -45,9 +52,11 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		res, datas, err = cmd.HandleCmdInfo(command_datas, s.Clients)
 
 	case pr.CmdProduce:
+		var command_datas pr.CmdProduceDatas
+
 		// Cast datas
-		command_datas, ok := command.Datas.(pr.CmdProduceDatas)
-		if !ok {
+		err := json.Unmarshal(command.Datas, &command_datas)
+		if err != nil {
 			return "", "", errors.New(pr.ErrCast)
 		}
 
@@ -55,9 +64,11 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		res, datas, err = cmd.HandleCmdProduce(command_datas, s.Topics)
 
 	case pr.CmdSubscribe:
+		var command_datas pr.CmdSubscribeDatas
+
 		// Cast datas
-		command_datas, ok := command.Datas.(pr.CmdSubscribeDatas)
-		if !ok {
+		err := json.Unmarshal(command.Datas, &command_datas)
+		if err != nil {
 			return "", "", errors.New(pr.ErrCast)
 		}
 

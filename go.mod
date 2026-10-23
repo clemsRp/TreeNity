@@ -1,5 +1,8 @@
 module treenity
 
-go 1.25.0
+go 1.26.0
 
-require github.com/alecthomas/kong v1.16.1 // indirect
+require (
+	github.com/alecthomas/kong v1.16.1
+	golang.org/x/sys v0.49.0
+)

@@ -3,11 +3,12 @@ package cmd
 import (
 	"fmt"
 	pr "treenity/src/protocol"
+	"treenity/src/protocol/ipc"
 
 	"github.com/alecthomas/kong"
 )
 
-func HandleCmdSubscribe(ctx *kong.Context) error {
+func HandleCmdSubscribe(ctx *kong.Context, writer *ipc.Writer) error {
 	sub_struct := pr.CLI.IpcIdentifier.Subscribe
 	fmt.Printf("IPC: '%s'\n", sub_struct.IpcIdentifier)
 	fmt.Printf("Topic: '%s'\n", sub_struct.TopicName)
