@@ -5,23 +5,24 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	pr "treenity/src/protocol"
+
+	"github.com/alecthomas/kong"
 )
 
-func (c *Client) HandleCommand() error {
-	// Get kong context
-	ctx, err := c.GetContext(os.Args[1:])
-	if err != nil {
-		return err
-	}
-
+func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	// Basics variables
 	i_struct := &pr.CLI.IpcIdentifier
 	ipc := i_struct.IpcIdentifier
 	command := ctx.Selected().Name
 
-	cmd_struct, err := c.GetCmdStruct(i_struct, ipc, command)
+	cmd_struct, cmd_err := c.GetCmdStruct(i_struct, ipc, command)
+	if cmd_err != nil {
+		return &pr.Error{
+			Message: cmd_err.Error(),
+			Code:    1,
+		}
+	}
 
 	return c.SendRequest(cmd_struct, command)
 }
@@ -57,11 +58,14 @@ func (c *Client) GetCmdStruct(i_struct *pr.IpcArgs, ipc, command string) (any, e
 	return cmd_struct, nil
 }
 
-func (c *Client) SendRequest(cmd_struct any, command string) error {
+func (c *Client) SendRequest(cmd_struct any, command string) *pr.Error {
 	// Convert cmd_struct to Raw Message
-	rawDatas, err := json.Marshal(cmd_struct)
-	if err != nil {
-		return err
+	rawDatas, marsh_err := json.Marshal(cmd_struct)
+	if marsh_err != nil {
+		return &pr.Error{
+			Message: marsh_err.Error(),
+			Code:    1,
+		}
 	}
 
 	// Init request
@@ -74,33 +78,55 @@ func (c *Client) SendRequest(cmd_struct any, command string) error {
 	// Cast request
 	payload, err := json.Marshal(request)
 	if err != nil {
-		return err
+		return &pr.Error{
+			Message: err.Error(),
+			Code:    1,
+		}
 	}
 
 	// Send request to Server
 	err = c.Writer.WriteLine(payload)
 	if err != nil {
-		return err
+		return &pr.Error{
+			Message: err.Error(),
+			Code:    3,
+		}
 	}
 
 	// Wait for response
-
-	line, err := c.Reader.ReadLine()
-	if err != nil {
-		if err == io.EOF {
+	line, read_err := c.Reader.ReadLine()
+	if read_err != nil {
+		if read_err == io.EOF {
 			return nil
 		}
-		return err
+		return &pr.Error{
+			Message: read_err.Error(),
+			Code:    3,
+		}
 	}
 
 	// Cast response
 	var response pr.ToClient
 	json_err := json.Unmarshal(line, &response)
 	if json_err != nil {
-		return json_err
+		return &pr.Error{
+			Message: json_err.Error(),
+			Code:    1,
+		}
 	}
 
-	fmt.Println(response.Response, response.Err)
+	// Handle error
+	if response.Err != nil {
+		return response.Err
+	}
+
+	// Print response
+	res := response.Response
+	if string(response.Datas) != `""` {
+		res += string(response.Datas)
+	}
+
+	fmt.Println(res)
 
 	return nil
 }

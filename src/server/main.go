@@ -40,12 +40,12 @@ func (s *Server) Start() error {
 	defer reader.Close()
 
 	for {
-		line, err := reader.ReadLine()
-		if err != nil {
-			if err == io.EOF {
+		line, read_err := reader.ReadLine()
+		if read_err != nil {
+			if read_err == io.EOF {
 				continue
 			}
-			return err
+			return read_err
 		}
 
 		// Cast request
@@ -63,27 +63,28 @@ func (s *Server) Start() error {
 	}
 }
 
-func (s *Server) SendResponse(command pr.ToServer, res string, datas any, server_err error) error {
+func (s *Server) SendResponse(command pr.ToServer, res string, datas any, server_err *pr.Error) *pr.Error {
 	// Create Writer
-	writer, err := ipc.NewWriter(command.Path)
-	if err != nil {
-		return err
+	writer, write_err := ipc.NewWriter(command.Path)
+	if write_err != nil {
+		return &pr.Error{
+			Message: write_err.Error(),
+			Code:    3,
+		}
 	}
 
 	// Convert cmd_struct to Raw Message
-	rawDatas, err := json.Marshal(datas)
-	if err != nil {
-		return err
-	}
-
-	server_err_string := ""
-	if server_err != nil {
-		server_err_string = server_err.Error()
+	rawDatas, marsh_err := json.Marshal(datas)
+	if marsh_err != nil {
+		return &pr.Error{
+			Message: marsh_err.Error(),
+			Code:    1,
+		}
 	}
 
 	// Init response
 	response := pr.ToClient{
-		Err:      server_err_string,
+		Err:      server_err,
 		Response: res,
 		Datas:    json.RawMessage(rawDatas),
 	}
@@ -91,9 +92,20 @@ func (s *Server) SendResponse(command pr.ToServer, res string, datas any, server
 	// Cast response
 	payload, err := json.Marshal(response)
 	if err != nil {
-		return err
+		return &pr.Error{
+			Message: err.Error(),
+			Code:    1,
+		}
 	}
 
 	// Send request to Server
-	return writer.WriteLine(payload)
+	send_err := writer.WriteLine(payload)
+	if send_err != nil {
+		return &pr.Error{
+			Message: send_err.Error(),
+			Code:    3,
+		}
+	}
+
+	return nil
 }

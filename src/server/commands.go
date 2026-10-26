@@ -2,16 +2,15 @@ package server
 
 import (
 	"encoding/json"
-	"errors"
 	pr "treenity/src/protocol"
 	"treenity/src/server/cmd"
 )
 
-func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
+func (s *Server) HandleCommands(command pr.ToServer) (string, any, *pr.Error) {
 	// Define return variables
 	var res string
 	var datas any
-	var err error
+	var err *pr.Error
 
 	// Handle Command
 	switch command.Command {
@@ -19,9 +18,12 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		var command_datas pr.CmdCreateDatas
 
 		// Cast datas
-		err := json.Unmarshal(command.Datas, &command_datas)
-		if err != nil {
-			return "", "", errors.New(pr.ErrCast)
+		json_err := json.Unmarshal(command.Datas, &command_datas)
+		if json_err != nil {
+			return "", "", &pr.Error{
+				Message: pr.ErrCast,
+				Code:    1,
+			}
 		}
 
 		// Run handler
@@ -31,9 +33,12 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		var command_datas pr.CmdListDatas
 
 		// Cast datas
-		err := json.Unmarshal(command.Datas, &command_datas)
-		if err != nil {
-			return "", "", errors.New(pr.ErrCast)
+		json_err := json.Unmarshal(command.Datas, &command_datas)
+		if json_err != nil {
+			return "", "", &pr.Error{
+				Message: pr.ErrCast,
+				Code:    1,
+			}
 		}
 
 		// Run handler
@@ -43,9 +48,12 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		var command_datas pr.CmdInfoDatas
 
 		// Cast datas
-		err := json.Unmarshal(command.Datas, &command_datas)
-		if err != nil {
-			return "", "", errors.New(pr.ErrCast)
+		json_err := json.Unmarshal(command.Datas, &command_datas)
+		if json_err != nil {
+			return "", "", &pr.Error{
+				Message: pr.ErrCast,
+				Code:    1,
+			}
 		}
 
 		// Run handler
@@ -55,9 +63,12 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		var command_datas pr.CmdProduceDatas
 
 		// Cast datas
-		err := json.Unmarshal(command.Datas, &command_datas)
-		if err != nil {
-			return "", "", errors.New(pr.ErrCast)
+		json_err := json.Unmarshal(command.Datas, &command_datas)
+		if json_err != nil {
+			return "", "", &pr.Error{
+				Message: pr.ErrCast,
+				Code:    1,
+			}
 		}
 
 		// Run handler
@@ -67,9 +78,12 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, error) {
 		var command_datas pr.CmdSubscribeDatas
 
 		// Cast datas
-		err := json.Unmarshal(command.Datas, &command_datas)
-		if err != nil {
-			return "", "", errors.New(pr.ErrCast)
+		json_err := json.Unmarshal(command.Datas, &command_datas)
+		if json_err != nil {
+			return "", "", &pr.Error{
+				Message: pr.ErrCast,
+				Code:    1,
+			}
 		}
 
 		// Run handler
