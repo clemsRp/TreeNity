@@ -6,13 +6,19 @@ import (
 	t "treenity/src/server/topics"
 )
 
-func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics) (string, any, error) {
+func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics) (string, any, *pr.Error) {
 	// Handle invalid topic name
 	if _, ok := topics.Get(command.TopicName); ok {
-		return "", "", fmt.Errorf("'%s' %s", command.TopicName, pr.ErrTopicAlreadyExist)
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicAlreadyExist),
+			Code:    2,
+		}
 
 	} else if !IsValidId(command.TopicName) {
-		return "", "", fmt.Errorf("'%s' %s", command.TopicName, pr.ErrInvalidName)
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrInvalidName),
+			Code:    1,
+		}
 	}
 
 	// Create Topic

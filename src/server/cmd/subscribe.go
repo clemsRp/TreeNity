@@ -7,28 +7,37 @@ import (
 	t "treenity/src/server/topics"
 )
 
-func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) (string, any, error) {
+func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) (string, any, *pr.Error) {
 	var client *pr.Client
 	var err error
 
 	// Check topic exist
 	topic, exist := topics.Get(command.TopicName)
 	if !exist {
-		return "", "", fmt.Errorf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist)
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
+			Code:    2,
+		}
 	}
 
 	client, err = clients.Get(command.SubscriberName)
 
 	// Check subscriber is valid name
 	if !IsValidId(command.SubscriberName) {
-		return "", "", fmt.Errorf("'%s' %s", command.SubscriberName, pr.ErrInvalidName)
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrInvalidName),
+			Code:    1,
+		}
 	}
 
 	// Check subscriber doesn't exist or is reconnecting
 	if err == nil {
 		// Check client is connected
 		if client.IsActive {
-			return "", "", fmt.Errorf("'%s' %s", client.Id, pr.ErrSubscriberAlreadyActive)
+			return "", "", &pr.Error{
+				Message: fmt.Sprintf("'%s' %s", client.Id, pr.ErrSubscriberAlreadyActive),
+				Code:    2,
+			}
 		}
 
 		// Update client datas

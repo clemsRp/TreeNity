@@ -32,6 +32,7 @@ func (c *Client) Connect(path string) error {
 }
 
 func (c *Client) Disconnect() {
-	// Close and Remove Writer
+	// Close and Remove Writer and Reader
 	c.Writer.Close()
+	c.Reader.Close()
 }

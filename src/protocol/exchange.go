@@ -11,7 +11,7 @@ type ToServer struct {
 
 // Server Output structure
 type ToClient struct {
-	Err      string          `json:"error"`
+	Err      *Error          `json:"error"`
 	Response string          `json:"response"`
 	Datas    json.RawMessage `json:"datas"`
 }

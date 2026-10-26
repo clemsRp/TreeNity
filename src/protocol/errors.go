@@ -3,7 +3,7 @@ package protocol
 const (
 	// General Errors
 	ErrCast           = "cast error"
-	ErrInvalidCommand = "Invalid command. Need to be: create, list, produce, subscribe or info."
+	ErrInvalidCommand = "invalid command. Need to be: create, list, produce, subscribe or info"
 
 	// Validation Errors
 	ErrInvalidName = "invalid name, must respect format " + ValidRegex
@@ -18,3 +18,8 @@ const (
 	ErrClientAlreadyInserted   = "client is already inserted inside the tree"
 	ErrClientNotInserted       = "client is not inserted inside the tree"
 )
+
+type Error struct {
+	Message string
+	Code    int
+}

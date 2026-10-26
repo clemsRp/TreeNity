@@ -14,7 +14,7 @@ func (t *Tree) Insert(client *pr.Client) error {
 
 	// Handle nil pointers
 	if client == nil {
-		return errors.New("Cannot insert nil pointer")
+		return errors.New("cannot insert nil pointer")
 	}
 
 	// Handle update
@@ -56,7 +56,7 @@ func (t *Tree) Remove(client *pr.Client) error {
 	defer t.mu.Unlock()
 
 	if client == nil {
-		return errors.New("Cannot remove nil pointer")
+		return errors.New("cannot remove nil pointer")
 	}
 
 	return t.RemoveClient(client, []rune(client.Prefix))
