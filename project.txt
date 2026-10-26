@@ -216,7 +216,16 @@ func (c *Client) SendRequest(cmd_struct any, command string) *pr.Error {
 	if response.Err != nil {
 		return response.Err
 	}
-	fmt.Println(response.Response)
+
+	// Print response
+	res := response.Response
+	if string(response.Datas) != `""` {
+		res += string(response.Datas)
+	}
+
+	if len(res) > 0 {
+		fmt.Println(res)
+	}
 
 	return nil
 }
@@ -254,8 +263,9 @@ func (c *Client) Connect(path string) error {
 }
 
 func (c *Client) Disconnect() {
-	// Close and Remove Writer
+	// Close and Remove Writer and Reader
 	c.Writer.Close()
+	c.Reader.Close()
 }
 package client
 
@@ -636,11 +646,20 @@ func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics) (string, any, 
 package cmd
 
 import (
+	"fmt"
 	pr "treenity/src/protocol"
 	h "treenity/src/server/hashmap"
 )
 
 func HandleCmdInfo(command pr.CmdInfoDatas, clients *h.Hashmap) (string, any, *pr.Error) {
+	// Handle invalid name
+	if !IsValidId(command.SubscriberName) {
+		return "", nil, &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrInvalidName),
+			Code:    1,
+		}
+	}
+
 	// Get Client
 	client, err := clients.Get(command.SubscriberName)
 
@@ -771,7 +790,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  "TODO",
+			IpcPath:  command.IpcIdentifier,
 			IsActive: true,
 		}
 
