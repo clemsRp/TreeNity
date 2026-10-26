@@ -81,7 +81,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  "TODO",
+			IpcPath:  command.IpcIdentifier,
 			IsActive: true,
 		}
 

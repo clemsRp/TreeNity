@@ -6,8 +6,9 @@ const (
 	ErrInvalidCommand = "invalid command. Need to be: create, list, produce, subscribe or info"
 
 	// Validation Errors
-	ErrInvalidName = "invalid name, must respect format " + ValidRegex
-	ErrInvalidKey  = "invalid key"
+	ErrInvalidName   = "invalid name, must respect format " + ValidRegex
+	ErrInvalidFormat = "invalid format, must respect format 'key:body'"
+	ErrInvalidKey    = "invalid key"
 
 	// Topic Errors
 	ErrTopicAlreadyExist = "topic already exists"
