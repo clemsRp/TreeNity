@@ -6,6 +6,7 @@ const (
 	CmdProduce   = "produce"
 	CmdSubscribe = "subscribe"
 	CmdInfo      = "info"
+	CmdMessage   = "message"
 )
 
 // Define Client parsing
@@ -50,4 +51,9 @@ type CmdSubscribeDatas struct {
 type CmdInfoDatas struct {
 	IpcIdentifier  string `kong:"-" json:"ipc_identifier"`
 	SubscriberName string `arg:"" help:"Subscriber Name" json:"subscriber_name"`
+}
+
+type CmdMessageDatas struct {
+	Key  string `json:"key"`
+	Body string `json:"body"`
 }
