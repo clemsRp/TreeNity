@@ -21,14 +21,20 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 		}
 	}
 
+	// Send command request
 	req_err := c.SendRequest(cmd_struct, command)
 	if req_err != nil {
 		return req_err
 	}
 
+	// Handle Produce/Subscribe Input/Ouput
 	switch command {
 	case pr.CmdProduce:
-		return c.ExecProduce()
+		if pr.CLI.IpcIdentifier.Produce.Raw {
+			return c.ExecProduceRaw()
+		}
+		return c.ExecProduceText()
+
 	case pr.CmdSubscribe:
 		return c.ExecSubscribe(cmd_struct)
 	}

@@ -5,6 +5,10 @@ const (
 	ErrCast           = "cast error"
 	ErrInvalidCommand = "invalid command. Need to be: create, list, produce, subscribe or info"
 
+	// EOF Errors
+	ErrEOF              = "EOF detected"
+	ErrPartialRecordEOF = "partial record at EOF"
+
 	// Validation Errors
 	ErrInvalidName   = "invalid name, must respect format " + ValidRegex
 	ErrInvalidFormat = "invalid format, must respect format 'key:body'"
