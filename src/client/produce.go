@@ -2,51 +2,32 @@ package client
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strings"
 	pr "treenity/src/protocol"
 )
 
 func (c *Client) ExecProduce() *pr.Error {
-	if pr.CLI.IpcIdentifier.Produce.Raw {
-		// Raw Mode
-
-	} else {
-		// Text Mode
-
-	}
-
-	return nil
-}
-
-func (c *Client) TextMode() *pr.Error {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
-		// Split line
+		// Get message datas
 		line := scanner.Text()
-		parts := strings.SplitN(line, ":", 2)
-
-		// Check valid format
-		if len(parts) != 2 {
-			return &pr.Error{
-				Message: pr.ErrInvalidFormat,
-				Code:    1,
-			}
-		}
-		key, body := parts[0], parts[1]
-
-		// Send message
-		err := c.SendMessage(pr.CLI.IpcIdentifier.Produce.TopicName, key, body)
+		key, body, err := c.GetMessageDatas(line)
 		if err != nil {
 			return err
+		}
+
+		// Send message
+		msg_err := c.SendMessage(key, body)
+		if msg_err != nil {
+			return msg_err
 		}
 	}
 
 	// Check scanner error
-	if err := scanner.Err(); err != nil {
+	if scan_err := scanner.Err(); scan_err != nil {
 		return &pr.Error{
-			Message: err.Error(),
+			Message: scan_err.Error(),
 			Code:    1,
 		}
 	}
@@ -54,7 +35,37 @@ func (c *Client) TextMode() *pr.Error {
 	return nil
 }
 
-func (c *Client) SendMessage(topic_name, key, body string) *pr.Error {
-	fmt.Println(key, body)
+func (c *Client) GetMessageDatas(line string) (string, string, *pr.Error) {
+	// Handle Raw flag
+	if pr.CLI.IpcIdentifier.Produce.Raw {
+		// TODO: Convert Little Endian in string
+		return "", "", nil
+
+	} else {
+		// Check valid format
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			return "", "", &pr.Error{
+				Message: pr.ErrInvalidFormat,
+				Code:    1,
+			}
+		}
+
+		return parts[0], parts[1], nil
+	}
+}
+
+func (c *Client) SendMessage(key, body string) *pr.Error {
+	// Send message
+	msg_struct := pr.CmdMessageDatas{
+		Key:  key,
+		Body: body,
+	}
+
+	err := c.SendRequest(msg_struct, pr.CmdMessage)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
