@@ -12,6 +12,6 @@ if printf '%s\n' "$COMMIT_MSG" | grep -qE "$PATTERN"; then
 else
     # Return error string if invalid
     echo "'$COMMIT_MSG' commit message does not respect required format (<type>(<scope>): <description> or <type> <description>)[cite: 1]."
-    echo "Authorized types : feat, fix, chore, docs, refactor, test, ci, style, perf[cite: 1]."
+    echo "Authorized types : feat, fix, chore, docs, refactor, test, ci, style, perf."
     exit 1
 fi
