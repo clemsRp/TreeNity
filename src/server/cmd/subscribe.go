@@ -7,9 +7,16 @@ import (
 	t "treenity/src/server/topics"
 )
 
-func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap, ipcPath string) (string, any, *pr.Error) {
+func HandleCmdSubscribe(command pr.CmdSubscribeDatas, clientPath string, topics *t.Topics, clients *h.Hashmap) (string, any, *pr.Error) {
 	var client *pr.Client
 	var err error
+
+	if clientPath == "" {
+		return "", "", &pr.Error{
+			Message: "missing client IPC path",
+			Code:    1,
+		}
+	}
 
 	// Check topic exist
 	topic, exist := topics.Get(command.TopicName)
@@ -42,6 +49,11 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Update client datas
 		client.IsActive = true
+		client.IpcPath = clientPath
+		if client.Writer != nil {
+			client.Writer.Close()
+			client.Writer = nil
+		}
 
 		// Remove client from previous topic tree if needed
 		if client.Topic != command.TopicName {
@@ -81,7 +93,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  ipcPath,
+			IpcPath:  clientPath,
 			IsActive: true,
 		}
 
