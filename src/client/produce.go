@@ -117,6 +117,14 @@ func (c *Client) GetRawData(reader *bufio.Reader, isKey bool) (string, *pr.Error
 }
 
 func (c *Client) SendMessage(key, body string) *pr.Error {
+	// Check message length
+	if len(key)+len(body) > pr.MaxMessageLength {
+		return &pr.Error{
+			Message: pr.ErrMessageTooLong,
+			Code:    1,
+		}
+	}
+
 	// Send message
 	msg_struct := pr.CmdMessageDatas{
 		Key:  key,

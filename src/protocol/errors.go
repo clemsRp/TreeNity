@@ -10,9 +10,10 @@ const (
 	ErrPartialRecordEOF = "partial record at EOF"
 
 	// Validation Errors
-	ErrInvalidName   = "invalid name, must respect format " + ValidRegex
-	ErrInvalidFormat = "invalid format, must respect format 'key:body'"
-	ErrInvalidKey    = "invalid key"
+	ErrInvalidName    = "invalid name, must respect format " + ValidRegex
+	ErrInvalidFormat  = "invalid format, must respect format 'key:body'"
+	ErrInvalidKey     = "invalid key"
+	ErrMessageTooLong = "message length exceeds 1024 bytes"
 
 	// Topic Errors
 	ErrTopicAlreadyExist = "topic already exists"
