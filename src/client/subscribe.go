@@ -1,46 +1,41 @@
 package client
 
 import (
-	"bytes"
-	"encoding/binary"
-	"encoding/json"
+	"bufio"
 	"fmt"
+	"os"
 	pr "treenity/src/protocol"
 )
 
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
-	cmd := cmd_struct.(pr.CmdSubscribeDatas)
+	fifoPath := c.Path
 
-	for {
-		data_read, err := c.Reader.ReadLine()
-		if err != nil {
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
-		var data_convert pr.CmdMessageDatas
-		err = json.Unmarshal(data_read, &data_convert)
-		if err != nil {
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
-
-		fmt.Println(cmd.Raw)
-		if !cmd.Raw {
-			fmt.Printf("%s:%s\n", data_convert.Key, data_convert.Body)
-		} else {
-			keyByte := []byte(data_convert.Key)
-			bodyByte := []byte(data_convert.Body)
-			buffer := new(bytes.Buffer)
-			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
-			buffer.Write(keyByte)
-			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
-			buffer.Write(bodyByte)
-
-			fmt.Println(buffer.String())
+	// 1. Ouverture du FIFO dédié en lecture seule (os.O_RDONLY).
+	// L'appel est bloquant sous Linux jusqu'à ce que le serveur ouvre l'extrémité d'écriture.
+	file, err := os.OpenFile(fifoPath, os.O_RDONLY, 0)
+	if err != nil {
+		return &pr.Error{
+			Message: fmt.Sprintf("failed to open fifo %s: %s", fifoPath, err.Error()),
+			Code:    3,
 		}
 	}
+	defer file.Close()
+
+	// 2. Boucle continue de lecture ligne par ligne avec bufio.Scanner.
+	// scanner.Scan() bloque jusqu'à réception d'une nouvelle ligne (\n).
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+	}
+
+	// 3. Gestion d'erreur de lecture
+	if err := scanner.Err(); err != nil {
+		return &pr.Error{
+			Message: fmt.Sprintf("error reading from fifo %s: %s", fifoPath, err.Error()),
+			Code:    3,
+		}
+	}
+
+	return nil
 }
