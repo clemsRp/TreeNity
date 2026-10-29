@@ -9,7 +9,7 @@ import (
 	pr "treenity/src/protocol"
 )
 
-func (c *Client) ExecProduceText() *pr.Error {
+func (c *Client) ExecProduceText(topic_name string) *pr.Error {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -25,7 +25,7 @@ func (c *Client) ExecProduceText() *pr.Error {
 		key, body := parts[0], parts[1]
 
 		// Send message
-		msg_err := c.SendMessage(key, body)
+		msg_err := c.SendMessage(key, body, topic_name)
 		if msg_err != nil {
 			return msg_err
 		}
@@ -42,7 +42,7 @@ func (c *Client) ExecProduceText() *pr.Error {
 	return nil
 }
 
-func (c *Client) ExecProduceRaw() *pr.Error {
+func (c *Client) ExecProduceRaw(topic_name string) *pr.Error {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -65,7 +65,7 @@ func (c *Client) ExecProduceRaw() *pr.Error {
 		}
 
 		// Send message
-		msg_err := c.SendMessage(key, body)
+		msg_err := c.SendMessage(key, body, topic_name)
 		if msg_err != nil {
 			return msg_err
 		}
@@ -116,11 +116,12 @@ func (c *Client) GetRawData(reader *bufio.Reader, isKey bool) (string, *pr.Error
 	return string(dataBuf), nil
 }
 
-func (c *Client) SendMessage(key, body string) *pr.Error {
+func (c *Client) SendMessage(key, body, topic_name string) *pr.Error {
 	// Send message
 	msg_struct := pr.CmdMessageDatas{
-		Key:  key,
-		Body: body,
+		Key:       key,
+		Body:      body,
+		TopicName: topic_name,
 	}
 
 	err := c.SendRequest(msg_struct, pr.CmdMessage)
