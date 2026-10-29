@@ -8,7 +8,6 @@ import (
 
 func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any, *pr.Error) {
 	// TODO: New message logic
-	fmt.Println(command.Key, command.Body)
-
+	fmt.Println(command.Key, command.Body, command.TopicName)
 	return "", "", nil
 }
