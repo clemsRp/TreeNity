@@ -30,10 +30,11 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	// Handle Produce/Subscribe Input/Ouput
 	switch command {
 	case pr.CmdProduce:
+		cmd_product := cmd_struct.(pr.CmdProduceDatas)
 		if pr.CLI.IpcIdentifier.Produce.Raw {
-			return c.ExecProduceRaw()
+			return c.ExecProduceRaw(cmd_product.TopicName)
 		}
-		return c.ExecProduceText()
+		return c.ExecProduceText(cmd_product.TopicName)
 
 	case pr.CmdSubscribe:
 		return c.ExecSubscribe(cmd_struct)

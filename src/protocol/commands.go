@@ -54,6 +54,7 @@ type CmdInfoDatas struct {
 }
 
 type CmdMessageDatas struct {
-	Key  string `json:"key"`
-	Body string `json:"body"`
+	Key       string `json:"key"`
+	Body      string `json:"body"`
+	TopicName string `json:"topic_name"`
 }
