@@ -8,6 +8,7 @@ const (
 
 	MaxIdCharacters    = 32
 	ClientsHashmapSize = 64
+	MaxMessageLength   = 1024
 
 	ValidRegex = `^[a-zA-Z0-9_.-]{1,32}$`
 )
