@@ -10,6 +10,7 @@ import (
 func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap, ipcPath string) (string, any, *pr.Error) {
 	var client *pr.Client
 	var err error
+	clientPath := ipcPath
 
 	if clientPath == "" {
 		return "", "", &pr.Error{
