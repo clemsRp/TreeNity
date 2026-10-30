@@ -8,8 +8,10 @@ import (
 )
 
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
+	// Get FIFO path
 	fifoPath := c.Path
 
+	// Open FIFO
 	file, err := os.OpenFile(fifoPath, os.O_RDONLY, 0)
 	if err != nil {
 		return &pr.Error{
@@ -19,12 +21,14 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	}
 	defer file.Close()
 
+	// Read and print messages
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Println(line)
 	}
 
+	// Check scanner error
 	if err := scanner.Err(); err != nil {
 		return &pr.Error{
 			Message: fmt.Sprintf("error reading from fifo %s: %s", fifoPath, err.Error()),

@@ -8,6 +8,7 @@ import (
 )
 
 func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
+	// Basics variables
 	i_struct := &pr.CLI.IpcIdentifier
 	ipc := i_struct.IpcIdentifier
 	command := ctx.Selected().Name
@@ -20,11 +21,13 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 		}
 	}
 
+	// Send command request
 	req_err := c.SendRequest(cmd_struct, command)
 	if req_err != nil {
 		return req_err
 	}
 
+	// Handle Produce/Subscribe Input/Ouput
 	switch command {
 	case pr.CmdProduce:
 		cmd_product := cmd_struct.(pr.CmdProduceDatas)
