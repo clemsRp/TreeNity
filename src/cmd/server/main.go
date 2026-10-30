@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	// Get args
 	argv := os.Args
 	argc := len(argv)
 
@@ -15,6 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create server
 	s := server.NewServer()
 	err := s.Start()
 	if err != nil {
