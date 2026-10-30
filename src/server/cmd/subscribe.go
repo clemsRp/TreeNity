@@ -11,6 +11,13 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	var client *pr.Client
 	var err error
 
+	if clientPath == "" {
+		return "", "", &pr.Error{
+			Message: "missing client IPC path",
+			Code:    1,
+		}
+	}
+
 	// Check topic exist
 	topic, exist := topics.Get(command.TopicName)
 	if !exist {
@@ -42,6 +49,11 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Update client datas
 		client.IsActive = true
+		client.IpcPath = clientPath
+		if client.Writer != nil {
+			client.Writer.Close()
+			client.Writer = nil
+		}
 
 		// Remove client from previous topic tree if needed
 		if client.Topic != command.TopicName {
