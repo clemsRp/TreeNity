@@ -94,7 +94,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  clientPath,
+			IpcPath:  ipcPath,
 			IsActive: true,
 		}
 
