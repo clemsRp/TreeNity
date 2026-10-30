@@ -7,7 +7,7 @@ import (
 	t "treenity/src/server/topics"
 )
 
-func HandleCmdSubscribe(command pr.CmdSubscribeDatas, clientPath string, topics *t.Topics, clients *h.Hashmap) (string, any, *pr.Error) {
+func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap, ipcPath string) (string, any, *pr.Error) {
 	var client *pr.Client
 	var err error
 
@@ -93,7 +93,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, clientPath string, topics 
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  clientPath,
+			IpcPath:  ipcPath,
 			IsActive: true,
 		}
 
