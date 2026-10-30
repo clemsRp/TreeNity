@@ -87,7 +87,7 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, *pr.Error) {
 		}
 
 		// Run handler
-		res, datas, err = cmd.HandleCmdSubscribe(command_datas, s.Topics, s.Clients)
+		res, datas, err = cmd.HandleCmdSubscribe(command_datas, s.Topics, s.Clients, command.Path)
 
 	case pr.CmdMessage:
 		var command_datas pr.CmdMessageDatas
