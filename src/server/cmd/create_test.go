@@ -125,3 +125,4 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 		t.Errorf("Expected client1 offset to be 2, got %d", client1.Offset)
 	}
 }
+
