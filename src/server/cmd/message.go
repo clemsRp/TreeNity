@@ -7,7 +7,18 @@ import (
 )
 
 func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any, *pr.Error) {
-	// TODO: New message logic
-	fmt.Println(command.Key, command.Body, command.TopicName)
-	return "", "", nil
+	topic, exist := topics.Get(command.TopicName)
+	if !exist {
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
+			Code:    2,
+		}
+	}
+
+	topic.Topic.NewMsgChan <- pr.Message{
+		Key:  command.Key,
+		Body: command.Body,
+	}
+
+	return "message sent", "", nil
 }

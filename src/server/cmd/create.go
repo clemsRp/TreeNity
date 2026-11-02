@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
 	h "treenity/src/server/hashmap"
@@ -34,50 +36,81 @@ func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics, clients *h.Has
 func AcceptNewMessages(topic *t.TopicDatas, clients *h.Hashmap) {
 	offset := uint32(0)
 	for {
-		// Add message
+		// 1. Detect and pop new messages added to the topic
 		msg := <-topic.Topic.NewMsgChan
 		msg.Offset = offset
 		topic.Topic.Messages = append(topic.Topic.Messages, &msg)
 		offset++
 
-		// Broadcast to subscriber
+		// 2. Thread-safe subscriber retrieval (managed by topic.Tree with sync.RWMutex)
 		subscribers := topic.Tree.Filter(msg.Key)
+
+		// Format message as CmdMessageDatas for subscribers
+		cmdData := pr.CmdMessageDatas{
+			Key:       msg.Key,
+			Body:      msg.Body,
+			TopicName: topic.Topic.Name,
+		}
+		payload, err := json.Marshal(cmdData)
+		if err != nil {
+			continue
+		}
+
+		// 3. For each subscriber: verify IsActive, offset match, and key prefix
 		for _, client := range subscribers {
-			// Skip inactive clients
 			if !client.IsActive {
 				continue
 			}
 
-			// Init writer if needed
+			// Check subscriber offset
+			if msg.Offset < client.Offset {
+				continue
+			}
+
+			// Validate message key prefix
+			if client.Prefix != "" && !strings.HasPrefix(msg.Key, client.Prefix) {
+				continue
+			}
+
+			// 4. Open client FIFO (IpcPath) in write-only mode (os.O_WRONLY) if not already open
 			if client.Writer == nil {
 				writer, err := ipc.NewWriter(client.IpcPath)
 				if err != nil {
 					disconnectSubscriber(client.Id, client, clients)
 					continue
 				}
-
 				client.Writer = writer
 			}
 
-			// Write message
-			if err := SendResponse(client.Writer, pr.ToServer{}, "", msg, nil); err != nil {
+			// Write formatted message
+			if err := client.Writer.WriteLine(payload); err != nil {
+				// 5. Handle write errors (syscall.EPIPE / broken pipe) by deactivating client and closing descriptor
 				disconnectSubscriber(client.Id, client, clients)
+				continue
 			}
+
+			// Update client offset after successful delivery
+			client.Offset = msg.Offset + 1
 		}
 	}
 }
 
 func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap) {
-	target := client
-	if clients != nil {
-		if c, err := clients.Get(clientId); err == nil {
-			target = c
+	if client != nil {
+		if client.Writer != nil {
+			_ = client.Writer.Close()
+			client.Writer = nil
 		}
+		client.IsActive = false
 	}
 
-	if target.Writer != nil {
-		_ = target.Writer.Close()
-		target.Writer = nil
+	if clients != nil {
+		if c, err := clients.Get(clientId); err == nil && c != nil && c != client {
+			if c.Writer != nil {
+				_ = c.Writer.Close()
+				c.Writer = nil
+			}
+			c.IsActive = false
+		}
 	}
-	target.IsActive = false
 }
