@@ -1,40 +1,47 @@
 package client
 
 import (
-	"bufio"
+	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
-	"os"
 	pr "treenity/src/protocol"
 )
 
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
-	// Get FIFO path
-	fifoPath := c.Path
+	cmd := cmd_struct.(pr.CmdSubscribeDatas)
 
-	// Open FIFO
-	file, err := os.OpenFile(fifoPath, os.O_RDONLY, 0)
-	if err != nil {
-		return &pr.Error{
-			Message: fmt.Sprintf("failed to open fifo %s: %s", fifoPath, err.Error()),
-			Code:    3,
+	for {
+		data_read, err := c.Reader.ReadLine()
+
+		if err != nil {
+			return &pr.Error{
+				Message: err.Error(),
+				Code:    1,
+			}
+		}
+		var data_convert pr.CmdMessageDatas
+		err = json.Unmarshal(data_read, &data_convert)
+
+		if err != nil {
+			return &pr.Error{
+				Message: err.Error(),
+				Code:    1,
+			}
+		}
+
+		if !cmd.Raw {
+			fmt.Printf("%s:%s\n", data_convert.Key, data_convert.Body)
+		} else {
+			keyByte := []byte(data_convert.Key)
+			bodyByte := []byte(data_convert.Body)
+			buffer := new(bytes.Buffer)
+			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
+			buffer.Write(keyByte)
+			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
+			buffer.Write(bodyByte)
+
+			fmt.Println(buffer.String())
 		}
 	}
-	defer file.Close()
-
-	// Read and print messages
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Println(line)
-	}
-
-	// Check scanner error
-	if err := scanner.Err(); err != nil {
-		return &pr.Error{
-			Message: fmt.Sprintf("error reading from fifo %s: %s", fifoPath, err.Error()),
-			Code:    3,
-		}
-	}
-
-	return nil
 }
