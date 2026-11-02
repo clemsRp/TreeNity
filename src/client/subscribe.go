@@ -40,3 +40,4 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 
 	return nil
 }
+
