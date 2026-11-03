@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
 	cmd "treenity/src/server/cmd"
@@ -26,7 +30,7 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start() (int, error) {
 	// Get FIFO path
 	pid := os.Getpid()
 	path := fmt.Sprintf("%s%d", pr.EntryPoint, pid)
@@ -36,44 +40,79 @@ func (s *Server) Start() error {
 	// Create Server Reader
 	reader, err := ipc.NewReader(path)
 	if err != nil {
-		return err
+		return 1, err
 	}
 	defer reader.Close()
 
-	for {
-		line, read_err := reader.ReadLine()
-		if read_err != nil {
-			if read_err == io.EOF {
-				continue
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	lineChan := make(chan string)
+	errorChan := make(chan error)
+
+	go func()  {
+		for {
+			line, err := reader.ReadLine()
+			if err != nil {
+				errorChan <- err
+				return
 			}
-			return read_err
+			lineChan <- string(line)
 		}
+	}()
 
-		// Cast request
-		var command pr.ToServer
-		json_err := json.Unmarshal(line, &command)
-		if json_err != nil {
-			continue
-		}
+	go func() (int, error){
+		defer wg.Done()
 
-		// Get request response
-		res, datas, err := s.HandleCommands(command)
+		for {
+			select {
+				case <-ctx.Done():
+					fmt.Println("Server shutingdown")
+					return 0, err
 
-		// Create Writer
-		writer, write_err := ipc.NewWriter(command.Path)
-		if write_err != nil {
-			continue
-		}
+				case errorGet := <-errorChan:
+					if errorGet != nil {
+						if errorGet == io.EOF {
+							continue
+						}
+						return 1, errorGet
+					}
 
-		// Send response to client
-		send_err := cmd.SendResponse(writer, command, res, datas, err)
-		writer.Close()
+				case lineGet := <-lineChan:
+					// Cast request
+					var command pr.ToServer
+					json_err := json.Unmarshal([]byte(lineGet), &command)
+					if json_err != nil {
+						return 1, json_err
+					}
 
-		if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
-			var command_datas pr.CmdSubscribeDatas
-			if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
-				cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
+					// Get request response
+					res, datas, err := s.HandleCommands(command)
+
+					// Create Writer
+					writer, write_err := ipc.NewWriter(command.Path)
+					if write_err != nil {
+						return 1, write_err
+					}
+
+					// Send response to client
+					cmd.SendResponse(writer, command, res, datas, err)
+					writer.Close()
+					if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
+						var command_datas pr.CmdSubscribeDatas
+						if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
+							cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
+						}
+					}
 			}
 		}
-	}
+	}()
+
+	<-ctx.Done()
+	wg.Wait()
+
+	return 0, err
 }
