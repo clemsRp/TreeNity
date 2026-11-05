@@ -36,7 +36,7 @@ type CmdListDatas struct {
 type CmdProduceDatas struct {
 	IpcIdentifier string `kong:"-" json:"ipc_identifier"`
 	TopicName     string `arg:"" help:"Topic Name" json:"topic_name"`
-	Raw           bool   `help:"Binary file" json:"raw"`
+	Raw           bool   `name:"raw" help:"Binary message format" json:"raw"`
 }
 
 type CmdSubscribeDatas struct {
@@ -57,4 +57,7 @@ type CmdMessageDatas struct {
 	Key       string `json:"key"`
 	Body      string `json:"body"`
 	TopicName string `json:"topic_name"`
+	RawKey    []byte `json:"raw_key,omitempty"`
+	RawBody   []byte `json:"raw_body,omitempty"`
+	Offset    uint32 `json:"offset"`
 }
