@@ -20,7 +20,7 @@ var CollisionsScenarios = []sce.HashmapScenario{
 			{Action: sce.HashmapActionAppend, Key: "c1", Value: "val1"},
 			{Action: sce.HashmapActionAppend, Key: "c2", Value: "val2"},
 			{Action: sce.HashmapActionLen, WantInt: 2},
-			// Supprime le premier de la collision
+			// Delete first collision item
 			{Action: sce.HashmapActionDelete, Key: "c1", WantErr: false},
 			{Action: sce.HashmapActionLen, WantInt: 1},
 			{Action: sce.HashmapActionContains, Key: "c1", WantBool: false},

@@ -9,6 +9,7 @@ import (
 type TopicDatas struct {
 	Topic *pr.Topic
 	Tree  *p.Tree
+	Mu    sync.RWMutex
 }
 
 type Topics struct {

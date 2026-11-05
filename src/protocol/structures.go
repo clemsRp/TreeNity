@@ -3,9 +3,11 @@ package protocol
 import "treenity/src/protocol/ipc"
 
 type Message struct {
-	Key    string `json:"key"`
-	Body   string `json:"body"`
-	Offset uint32 `json:"offset"`
+	Key     string `json:"key"`
+	Body    string `json:"body"`
+	Offset  uint32 `json:"offset"`
+	RawKey  []byte `json:"raw_key,omitempty"`
+	RawBody []byte `json:"raw_body,omitempty"`
 }
 
 type Topic struct {
@@ -21,6 +23,7 @@ type Client struct {
 	Prefix         string      `json:"prefix"`
 	PreviousPrefix string      `json:"-"`
 	IpcPath        string      `json:"ipc"`
-	Writer         *ipc.Writer `json:"-"`
-	IsActive       bool        `json:"-"`
+	Writer         *ipc.Writer   `json:"-"`
+	IsActive       bool          `json:"-"`
+	MsgChan        chan *Message `json:"-"`
 }

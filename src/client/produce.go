@@ -9,132 +9,95 @@ import (
 	pr "treenity/src/protocol"
 )
 
-func (c *Client) ExecProduceText(topic_name string) *pr.Error {
+func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
+	if cmd.Raw {
+		// Binary mode
+		reader := bufio.NewReader(os.Stdin)
+
+		for {
+			var keyLen int32
+			err := binary.Read(reader, binary.LittleEndian, &keyLen)
+			if err == io.EOF {
+				break
+			}
+			if err != nil || keyLen < 0 {
+				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+			}
+
+			keyBuf := make([]byte, keyLen)
+			if _, err := io.ReadFull(reader, keyBuf); err != nil {
+				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+			}
+
+			var valLen int32
+			if err := binary.Read(reader, binary.LittleEndian, &valLen); err != nil || valLen < 0 {
+				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+			}
+
+			valBuf := make([]byte, valLen)
+			if _, err := io.ReadFull(reader, valBuf); err != nil {
+				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+			}
+
+			if int(keyLen)+int(valLen) > pr.MaxMessageLength {
+				return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+			}
+
+			msgStruct := pr.CmdMessageDatas{
+				Key:       string(keyBuf),
+				Body:      string(valBuf),
+				RawKey:    keyBuf,
+				RawBody:   valBuf,
+				TopicName: cmd.TopicName,
+			}
+			if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+				return sendErr
+			}
+		}
+		return nil
+	}
+
+	// Text mode
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
-
-		// Check valid format
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) != 2 {
-			return &pr.Error{
-				Message: pr.ErrInvalidFormat,
-				Code:    1,
-			}
+			return &pr.Error{Message: pr.ErrInvalidFormat, Code: 1}
 		}
 		key, body := parts[0], parts[1]
 
-		// Send message
-		msg_err := c.SendMessage(key, body, topic_name)
-		if msg_err != nil {
-			return msg_err
+		if len(key)+len(body) > pr.MaxMessageLength {
+			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+		}
+
+		msgStruct := pr.CmdMessageDatas{
+			Key:       key,
+			Body:      body,
+			TopicName: cmd.TopicName,
+		}
+		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+			return sendErr
 		}
 	}
-
-	// Check scanner error
-	if scan_err := scanner.Err(); scan_err != nil {
-		return &pr.Error{
-			Message: scan_err.Error(),
-			Code:    1,
-		}
+	if scanErr := scanner.Err(); scanErr != nil {
+		return &pr.Error{Message: scanErr.Error(), Code: 1}
 	}
-
 	return nil
 }
 
-func (c *Client) ExecProduceRaw(topic_name string) *pr.Error {
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		// Get key
-		key, key_err := c.GetRawData(reader, true)
-		if key_err != nil {
-			if key_err.Code == -1 {
-				break
-			}
-			return key_err
-		}
-
-		// Get body
-		body, body_err := c.GetRawData(reader, false)
-		if body_err != nil {
-			if body_err.Code == -1 {
-				break
-			}
-			return body_err
-		}
-
-		// Send message
-		msg_err := c.SendMessage(key, body, topic_name)
-		if msg_err != nil {
-			return msg_err
-		}
-	}
-
-	return nil
-}
-
-func (c *Client) GetRawData(reader *bufio.Reader, isKey bool) (string, *pr.Error) {
-	// Get data len
-	var dataLen int32
-	err := binary.Read(reader, binary.LittleEndian, &dataLen)
-
-	// Handle EOF
-	if err == io.EOF {
-		// Proper EOF
-		if isKey {
-			return "", &pr.Error{
-				Message: pr.ErrEOF,
-				Code:    -1,
-			}
-		}
-
-		// Handle invalid shutdown
-		return "", &pr.Error{
-			Message: pr.ErrPartialRecordEOF,
-			Code:    1,
-		}
-	}
-
-	// Handle error
-	if err != nil || dataLen < 0 {
-		return "", &pr.Error{
-			Message: pr.ErrPartialRecordEOF,
-			Code:    1,
-		}
-	}
-
-	// Get data content
-	dataBuf := make([]byte, dataLen)
-	if _, err := io.ReadFull(reader, dataBuf); err != nil {
-		return "", &pr.Error{
-			Message: pr.ErrPartialRecordEOF,
-			Code:    1,
-		}
-	}
-
-	return string(dataBuf), nil
-}
-
-func (c *Client) SendMessage(key, body, topic_name string) *pr.Error {
-	// Check message length
-	if len(key)+len(body) > pr.MaxMessageLength {
-		return &pr.Error{
-			Message: pr.ErrMessageTooLong,
-			Code:    1,
-		}
-	}
-	// Send message
-	msg_struct := pr.CmdMessageDatas{
-		Key:       key,
-		Body:      body,
+// Backward compatibility
+func (c *Client) ExecProduceText(topic_name string) *pr.Error {
+	return c.Run(pr.CmdProduceDatas{
 		TopicName: topic_name,
-	}
+		Raw:       false,
+	})
+}
 
-	err := c.SendRequest(msg_struct, pr.CmdMessage)
-	if err != nil {
-		return err
-	}
-
-	return nil
+// Backward compatibility
+func (c *Client) ExecProduceRaw(topic_name string) *pr.Error {
+	return c.Run(pr.CmdProduceDatas{
+		TopicName: topic_name,
+		Raw:       true,
+	})
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	pr "treenity/src/protocol"
 	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
@@ -10,17 +11,23 @@ import (
 func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap, ipcPath string) (string, any, *pr.Error) {
 	var client *pr.Client
 	var err error
-	clientPath := ipcPath
 
-	if clientPath == "" {
+	// Check response channel
+	if ipcPath == "" {
 		return "", "", &pr.Error{
 			Message: "missing client IPC path",
 			Code:    1,
 		}
 	}
 
+	// Subscriber IPC channel
+	permanentIpcPath := command.IpcIdentifier + "." + command.SubscriberName
+	if command.IpcIdentifier == "" {
+		permanentIpcPath = ipcPath
+	}
+
 	// Check topic exist
-	topic, exist := topics.Get(command.TopicName)
+	_, exist := topics.Get(command.TopicName)
 	if !exist {
 		return "", "", &pr.Error{
 			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
@@ -50,7 +57,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Update client datas
 		client.IsActive = true
-		client.IpcPath = clientPath
+		client.IpcPath = permanentIpcPath
 		if client.Writer != nil {
 			client.Writer.Close()
 			client.Writer = nil
@@ -94,7 +101,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  ipcPath,
+			IpcPath:  permanentIpcPath,
 			IsActive: true,
 		}
 
@@ -102,8 +109,50 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		clients.Append(command.SubscriberName, client)
 	}
 
+	return "subscribed to " + command.TopicName, "", nil
+}
+
+// Replay messages and insert client
+func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
+	topic, exist := topics.Get(command.TopicName)
+	if !exist {
+		return
+	}
+
+	client, err := clients.Get(command.SubscriberName)
+	if err != nil || client == nil {
+		return
+	}
+
+	topic.Mu.Lock()
+	defer topic.Mu.Unlock()
+
+	for _, msg := range topic.Topic.Messages {
+		if !client.IsActive {
+			break
+		}
+		if client.Offset <= msg.Offset {
+			if strings.HasPrefix(msg.Key, client.Prefix) {
+				if !topic.SendToSubscriber(msg, client, clients) {
+					break
+				}
+			} else {
+				client.Offset = msg.Offset + 1
+			}
+		}
+	}
+
+	// Subscriber worker goroutine
+	if client.MsgChan == nil {
+		client.MsgChan = make(chan *pr.Message, 100)
+	}
+	go topic.StartSubscriberWorker(client, clients)
+
 	// Add client to topic prefix tree
 	topic.Tree.Insert(client)
+}
 
-	return "subscribed to " + command.TopicName, "", nil
+// Backward compatibility
+func ReplayAndInsertSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
+	ReplayAndInsert(command, topics, clients)
 }

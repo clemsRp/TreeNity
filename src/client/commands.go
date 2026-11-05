@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	pr "treenity/src/protocol"
+	"treenity/src/protocol/ipc"
 
 	"github.com/alecthomas/kong"
 )
@@ -10,10 +11,10 @@ import (
 func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	// Basics variables
 	i_struct := &pr.CLI.IpcIdentifier
-	ipc := i_struct.IpcIdentifier
+	ipcPath := i_struct.IpcIdentifier
 	command := ctx.Selected().Name
 
-	cmd_struct, cmd_err := c.GetCmdStruct(i_struct, ipc, command)
+	cmd_struct, cmd_err := c.GetCmdStruct(i_struct, ipcPath, command)
 	if cmd_err != nil {
 		return &pr.Error{
 			Message: cmd_err.Error(),
@@ -21,9 +22,26 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 		}
 	}
 
+	var permReader *ipc.Reader
+	if command == pr.CmdSubscribe {
+		subCmd := cmd_struct.(pr.CmdSubscribeDatas)
+		permanentPath := subCmd.IpcIdentifier + "." + subCmd.SubscriberName
+		var err error
+		permReader, err = ipc.NewReader(permanentPath)
+		if err != nil {
+			return &pr.Error{
+				Message: err.Error(),
+				Code:    1,
+			}
+		}
+	}
+
 	// Send command request
 	req_err := c.SendRequest(cmd_struct, command)
 	if req_err != nil {
+		if permReader != nil {
+			permReader.Close()
+		}
 		return req_err
 	}
 
@@ -31,13 +49,10 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	switch command {
 	case pr.CmdProduce:
 		cmd_product := cmd_struct.(pr.CmdProduceDatas)
-		if pr.CLI.IpcIdentifier.Produce.Raw {
-			return c.ExecProduceRaw(cmd_product.TopicName)
-		}
-		return c.ExecProduceText(cmd_product.TopicName)
+		return c.Run(cmd_product)
 
 	case pr.CmdSubscribe:
-		return c.ExecSubscribe(cmd_struct)
+		return c.ExecSubscribe(cmd_struct, permReader)
 	}
 
 	return nil

@@ -53,7 +53,7 @@ func (s *Server) Start() error {
 		var command pr.ToServer
 		json_err := json.Unmarshal(line, &command)
 		if json_err != nil {
-			return json_err
+			continue
 		}
 
 		// Get request response
@@ -62,10 +62,18 @@ func (s *Server) Start() error {
 		// Create Writer
 		writer, write_err := ipc.NewWriter(command.Path)
 		if write_err != nil {
-			return write_err
+			continue
 		}
 
 		// Send response to client
-		cmd.SendResponse(writer, command, res, datas, err)
+		send_err := cmd.SendResponse(writer, command, res, datas, err)
+		writer.Close()
+
+		if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
+			var command_datas pr.CmdSubscribeDatas
+			if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
+				cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
+			}
+		}
 	}
 }
