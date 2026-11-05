@@ -53,7 +53,7 @@ func (s *Server) Start() error {
 		var command pr.ToServer
 		json_err := json.Unmarshal(line, &command)
 		if json_err != nil {
-			return json_err
+			continue
 		}
 
 		// Get request response
@@ -62,10 +62,11 @@ func (s *Server) Start() error {
 		// Create Writer
 		writer, write_err := ipc.NewWriter(command.Path)
 		if write_err != nil {
-			return write_err
+			continue
 		}
 
 		// Send response to client
 		cmd.SendResponse(writer, command, res, datas, err)
+		writer.Close()
 	}
 }

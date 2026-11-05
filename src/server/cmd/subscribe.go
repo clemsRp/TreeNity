@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	pr "treenity/src/protocol"
 	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
@@ -10,14 +11,17 @@ import (
 func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap, ipcPath string) (string, any, *pr.Error) {
 	var client *pr.Client
 	var err error
-	clientPath := ipcPath
 
-	if clientPath == "" {
+	// 1. Vérification du canal de réponse temporaire (pour la confirmation JSON)
+	if ipcPath == "" {
 		return "", "", &pr.Error{
 			Message: "missing client IPC path",
 			Code:    1,
 		}
 	}
+
+	// 2. Canal IPC permanent dédié à la distribution des messages de l'abonné
+	permanentIpcPath := command.IpcIdentifier + "." + command.SubscriberName
 
 	// Check topic exist
 	topic, exist := topics.Get(command.TopicName)
@@ -50,7 +54,8 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Update client datas
 		client.IsActive = true
-		client.IpcPath = clientPath
+		// 3. Assignation du canal permanent lors de la reconnexion
+		client.IpcPath = permanentIpcPath
 		if client.Writer != nil {
 			client.Writer.Close()
 			client.Writer = nil
@@ -89,17 +94,39 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		}
 
 		// Create subscriber
+		// 3. Assignation du canal permanent lors de la création
 		client = &pr.Client{
 			Id:       command.SubscriberName,
 			Topic:    command.TopicName,
 			Offset:   offset,
 			Prefix:   prefix,
-			IpcPath:  ipcPath,
+			IpcPath:  permanentIpcPath,
 			IsActive: true,
 		}
 
 		// Add client to Hashmap
 		clients.Append(command.SubscriberName, client)
+	}
+
+	// Replay existing messages from client.Offset and insert client into topic tree atomically
+	topic.Mu.Lock()
+	defer topic.Mu.Unlock()
+
+	for _, msg := range topic.Topic.Messages {
+		if !client.IsActive {
+			break
+		}
+		if client.Offset <= msg.Offset {
+			if strings.HasPrefix(msg.Key, client.Prefix) {
+				if topic.SendToSubscriber(msg, client, clients) {
+					client.Offset = msg.Offset + 1
+				} else {
+					break
+				}
+			} else {
+				client.Offset = msg.Offset + 1
+			}
+		}
 	}
 
 	// Add client to topic prefix tree

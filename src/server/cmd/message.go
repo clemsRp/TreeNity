@@ -16,9 +16,11 @@ func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any
 	}
 
 	topic.Topic.NewMsgChan <- pr.Message{
-		Key:  command.Key,
-		Body: command.Body,
+		Key:     command.Key,
+		Body:    command.Body,
+		RawKey:  command.RawKey,
+		RawBody: command.RawBody,
 	}
 
-	return "message sent", "", nil
+	return "", "", nil
 }

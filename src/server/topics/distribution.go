@@ -1,0 +1,93 @@
+package topics
+
+import (
+	"encoding/json"
+	"os"
+	"strings"
+	"syscall"
+
+	pr "treenity/src/protocol"
+	h "treenity/src/server/hashmap"
+)
+
+func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
+	for msg := range td.Topic.NewMsgChan {
+
+		td.Mu.Lock()
+		msg.Offset = uint32(len(td.Topic.Messages))
+		td.Topic.Messages = append(td.Topic.Messages, &msg)
+
+		subscribers := td.Tree.Filter(msg.Key)
+
+		for _, client := range subscribers {
+			if !client.IsActive {
+				continue
+			}
+
+			if client.Offset <= msg.Offset {
+				if strings.HasPrefix(msg.Key, client.Prefix) {
+					if td.SendToSubscriber(&msg, client, clients) {
+						client.Offset = msg.Offset + 1
+					}
+				} else {
+					client.Offset = msg.Offset + 1
+				}
+			}
+		}
+		td.Mu.Unlock()
+	}
+}
+
+func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clients *h.Hashmap) bool {
+	pipe, err := os.OpenFile(client.IpcPath, os.O_WRONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		disconnectSubscriber(client.Id, client, clients)
+		return false
+	}
+
+	msgData := pr.CmdMessageDatas{
+		Key:       msg.Key,
+		Body:      msg.Body,
+		RawKey:    msg.RawKey,
+		RawBody:   msg.RawBody,
+		Offset:    msg.Offset,
+		TopicName: td.Topic.Name,
+	}
+
+	payload, err := json.Marshal(msgData)
+	if err != nil {
+		_ = pipe.Close()
+		return false
+	}
+	payload = append(payload, '\n')
+
+	_, writeErr := pipe.Write(payload)
+	_ = pipe.Close()
+
+	if writeErr != nil {
+		disconnectSubscriber(client.Id, client, clients)
+		return false
+	}
+
+	return true
+}
+
+func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap) {
+	if client != nil {
+		if client.Writer != nil {
+			_ = client.Writer.Close()
+			client.Writer = nil
+		}
+		client.IsActive = false
+	}
+
+	if clients != nil {
+		if c, err := clients.Get(clientId); err == nil && c != nil && c != client {
+			if c.Writer != nil {
+				_ = c.Writer.Close()
+				c.Writer = nil
+			}
+			c.IsActive = false
+		}
+	}
+}

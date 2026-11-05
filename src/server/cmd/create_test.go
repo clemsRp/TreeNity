@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,7 +63,7 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 	topicData.Tree.Insert(client1)
 	topicData.Tree.Insert(client2)
 
-	// 1. Send first message to initialize writers for both active clients
+	// 1. Send first message to both active clients
 	topicData.Topic.NewMsgChan <- pr.Message{
 		Key:  "sports.football",
 		Body: "Goal!",
@@ -73,21 +74,36 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 	if err1 != nil || len(line1) == 0 {
 		t.Fatalf("Failed to read from r1: %v", err1)
 	}
+	var msg1 pr.CmdMessageDatas
+	if err := json.Unmarshal(line1, &msg1); err != nil {
+		t.Fatalf("Expected JSON from r1, got '%s', err: %v", string(line1), err)
+	}
+	if msg1.Key != "sports.football" || msg1.Body != "Goal!" || msg1.Offset != 0 {
+		t.Fatalf("Expected sports.football:Goal! offset 0, got %+v", msg1)
+	}
 
 	line2, err2 := r2.ReadLine()
 	if err2 != nil || len(line2) == 0 {
 		t.Fatalf("Failed to read from r2: %v", err2)
 	}
-
-	// Both clients should now have an active Writer and offset 1
-	if client1.Writer == nil || client2.Writer == nil {
-		t.Fatalf("Expected writers to be initialized")
+	var msg2 pr.CmdMessageDatas
+	if err := json.Unmarshal(line2, &msg2); err != nil {
+		t.Fatalf("Expected JSON from r2, got '%s', err: %v", string(line2), err)
 	}
-	if client1.Offset != 1 || client2.Offset != 1 {
-		t.Fatalf("Expected offsets to be 1")
+	if msg2.Key != "sports.football" || msg2.Body != "Goal!" || msg2.Offset != 0 {
+		t.Fatalf("Expected sports.football:Goal! offset 0, got %+v", msg2)
 	}
 
-	// 2. Close r2 to trigger broken pipe (EPIPE) on the next write
+	// Both clients should now have offset 1
+	topicData.Mu.RLock()
+	off1 := client1.Offset
+	off2 := client2.Offset
+	topicData.Mu.RUnlock()
+	if off1 != 1 || off2 != 1 {
+		t.Fatalf("Expected offsets to be 1, got client1=%d, client2=%d", off1, off2)
+	}
+
+	// 2. Close r2 to trigger broken pipe (EPIPE/client closed) on the next write
 	_ = r2.Close()
 
 	// Send second message
@@ -101,15 +117,22 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 	if err1 != nil || len(line1) == 0 {
 		t.Fatalf("Failed to read second message from r1: %v", err1)
 	}
+	var msg3 pr.CmdMessageDatas
+	if err := json.Unmarshal(line1, &msg3); err != nil {
+		t.Fatalf("Expected JSON on second message, got '%s', err: %v", string(line1), err)
+	}
+	if msg3.Key != "sports.tennis" || msg3.Body != "Ace!" || msg3.Offset != 1 {
+		t.Fatalf("Expected sports.tennis:Ace! offset 1, got %+v", msg3)
+	}
 
 	// Wait briefly for client2 to process the broken pipe
 	time.Sleep(50 * time.Millisecond)
 
-	if client2.IsActive {
+	topicData.Mu.RLock()
+	c2Active := client2.IsActive
+	topicData.Mu.RUnlock()
+	if c2Active {
 		t.Errorf("Expected client2 IsActive to be false after EPIPE")
-	}
-	if client2.Writer != nil {
-		t.Errorf("Expected client2 Writer to be nil after disconnect")
 	}
 
 	// 3. Test prefix filtering on client1 (which has prefix "sports.")
@@ -120,9 +143,96 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
+	topicData.Mu.RLock()
+	off1 = client1.Offset
+	topicData.Mu.RUnlock()
+
 	// client1 offset should remain 2 because "news.politics" does not match "sports."
-	if client1.Offset != 2 {
-		t.Errorf("Expected client1 offset to be 2, got %d", client1.Offset)
+	if off1 != 2 {
+		t.Errorf("Expected client1 offset to be 2, got %d", off1)
 	}
 }
 
+func TestHandleCmdSubscribe_Replay(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "treenity_replay_*")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	topicsList := top.NewTopics()
+	clients := h.CreateHashmap(int(pr.ClientsHashmapSize))
+	topicData := topicsList.Create("test_replay")
+
+	// Add 3 messages directly into topic
+	topicData.Topic.Messages = append(topicData.Topic.Messages,
+		&pr.Message{Key: "sports.golf", Body: "Hole in one", Offset: 0},
+		&pr.Message{Key: "cooking.cake", Body: "Delicious", Offset: 1},
+		&pr.Message{Key: "sports.ski", Body: "Snow", Offset: 2},
+	)
+
+	subPipe := filepath.Join(tmpDir, "sub_replay.pipe")
+	reader, err := ipc.NewReader(subPipe)
+	if err != nil {
+		t.Fatalf("Failed to create reader: %v", err)
+	}
+	defer reader.Close()
+
+	prefix := "sports."
+	offset := 0
+	cmdSub := pr.CmdSubscribeDatas{
+		IpcIdentifier:  filepath.Join(tmpDir, "sub_replay"),
+		TopicName:      "test_replay",
+		SubscriberName: "pipe",
+		Prefix:         &prefix,
+		Offset:         &offset,
+	}
+
+	// Temporary response IPC path
+	respPipe := filepath.Join(tmpDir, "resp.pipe")
+	respReader, err := ipc.NewReader(respPipe)
+	if err != nil {
+		t.Fatalf("Failed to create resp reader: %v", err)
+	}
+	defer respReader.Close()
+
+	_, _, prErr := HandleCmdSubscribe(cmdSub, topicsList, clients, respPipe)
+	if prErr != nil {
+		t.Fatalf("HandleCmdSubscribe failed: %v", prErr.Message)
+	}
+
+	// Should receive first message: sports.golf
+	l1, err := reader.ReadLine()
+	if err != nil {
+		t.Fatalf("Failed to read first replay message: %v", err)
+	}
+	var m1 pr.CmdMessageDatas
+	if err := json.Unmarshal(l1, &m1); err != nil {
+		t.Fatalf("Failed to unmarshal m1: %v", err)
+	}
+	if m1.Key != "sports.golf" || m1.Offset != 0 {
+		t.Fatalf("Expected sports.golf offset 0, got %+v", m1)
+	}
+
+	// Should receive second message: sports.ski (cooking.cake was skipped due to prefix)
+	l2, err := reader.ReadLine()
+	if err != nil {
+		t.Fatalf("Failed to read second replay message: %v", err)
+	}
+	var m2 pr.CmdMessageDatas
+	if err := json.Unmarshal(l2, &m2); err != nil {
+		t.Fatalf("Failed to unmarshal m2: %v", err)
+	}
+	if m2.Key != "sports.ski" || m2.Offset != 2 {
+		t.Fatalf("Expected sports.ski offset 2, got %+v", m2)
+	}
+
+	// Check client offset has advanced past all 3 messages
+	client, err := clients.Get("pipe")
+	if err != nil || client == nil {
+		t.Fatalf("Client 'pipe' not found in clients map")
+	}
+	if client.Offset != 3 {
+		t.Fatalf("Expected client offset 3, got %d", client.Offset)
+	}
+}
