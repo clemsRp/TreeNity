@@ -32,7 +32,7 @@ func main() {
 	err := c.Connect(entrypoint)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
-		os.Exit(3)
+		os.Exit(1)
 	}
 	defer c.Disconnect()
 

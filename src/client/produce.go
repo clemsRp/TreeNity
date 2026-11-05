@@ -9,10 +9,9 @@ import (
 	pr "treenity/src/protocol"
 )
 
-// Run exécute la production de messages sur un topic.
 func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 	if cmd.Raw {
-		// 1. Mode binaire : ignorer la validation texte et la limite de 1024 octets
+		// Binary mode
 		reader := bufio.NewReader(os.Stdin)
 
 		for {
@@ -40,6 +39,10 @@ func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
 			}
 
+			if int(keyLen)+int(valLen) > pr.MaxMessageLength {
+				return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+			}
+
 			msgStruct := pr.CmdMessageDatas{
 				Key:       string(keyBuf),
 				Body:      string(valBuf),
@@ -54,7 +57,7 @@ func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 		return nil
 	}
 
-	// 2. Mode texte par défaut
+	// Text mode
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -83,7 +86,7 @@ func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 	return nil
 }
 
-// ExecProduceText maintient la compatibilité avec l'ancien appel
+// Backward compatibility
 func (c *Client) ExecProduceText(topic_name string) *pr.Error {
 	return c.Run(pr.CmdProduceDatas{
 		TopicName: topic_name,
@@ -91,7 +94,7 @@ func (c *Client) ExecProduceText(topic_name string) *pr.Error {
 	})
 }
 
-// ExecProduceRaw maintient la compatibilité avec l'ancien appel
+// Backward compatibility
 func (c *Client) ExecProduceRaw(topic_name string) *pr.Error {
 	return c.Run(pr.CmdProduceDatas{
 		TopicName: topic_name,

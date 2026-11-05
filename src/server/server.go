@@ -66,7 +66,14 @@ func (s *Server) Start() error {
 		}
 
 		// Send response to client
-		cmd.SendResponse(writer, command, res, datas, err)
+		send_err := cmd.SendResponse(writer, command, res, datas, err)
 		writer.Close()
+
+		if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
+			var command_datas pr.CmdSubscribeDatas
+			if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
+				cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
+			}
+		}
 	}
 }

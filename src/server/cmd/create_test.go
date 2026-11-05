@@ -188,18 +188,11 @@ func TestHandleCmdSubscribe_Replay(t *testing.T) {
 		Offset:         &offset,
 	}
 
-	// Temporary response IPC path
-	respPipe := filepath.Join(tmpDir, "resp.pipe")
-	respReader, err := ipc.NewReader(respPipe)
-	if err != nil {
-		t.Fatalf("Failed to create resp reader: %v", err)
-	}
-	defer respReader.Close()
-
-	_, _, prErr := HandleCmdSubscribe(cmdSub, topicsList, clients, respPipe)
+	_, _, prErr := HandleCmdSubscribe(cmdSub, topicsList, clients, subPipe)
 	if prErr != nil {
 		t.Fatalf("HandleCmdSubscribe failed: %v", prErr.Message)
 	}
+	ReplayAndInsert(cmdSub, topicsList, clients)
 
 	// Should receive first message: sports.golf
 	l1, err := reader.ReadLine()

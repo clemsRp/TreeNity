@@ -12,7 +12,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	var client *pr.Client
 	var err error
 
-	// 1. Vérification du canal de réponse temporaire (pour la confirmation JSON)
+	// Check response channel
 	if ipcPath == "" {
 		return "", "", &pr.Error{
 			Message: "missing client IPC path",
@@ -20,11 +20,14 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		}
 	}
 
-	// 2. Canal IPC permanent dédié à la distribution des messages de l'abonné
+	// Subscriber IPC channel
 	permanentIpcPath := command.IpcIdentifier + "." + command.SubscriberName
+	if command.IpcIdentifier == "" {
+		permanentIpcPath = ipcPath
+	}
 
 	// Check topic exist
-	topic, exist := topics.Get(command.TopicName)
+	_, exist := topics.Get(command.TopicName)
 	if !exist {
 		return "", "", &pr.Error{
 			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
@@ -54,7 +57,6 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Update client datas
 		client.IsActive = true
-		// 3. Assignation du canal permanent lors de la reconnexion
 		client.IpcPath = permanentIpcPath
 		if client.Writer != nil {
 			client.Writer.Close()
@@ -94,7 +96,6 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		}
 
 		// Create subscriber
-		// 3. Assignation du canal permanent lors de la création
 		client = &pr.Client{
 			Id:       command.SubscriberName,
 			Topic:    command.TopicName,
@@ -108,7 +109,21 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		clients.Append(command.SubscriberName, client)
 	}
 
-	// Replay existing messages from client.Offset and insert client into topic tree atomically
+	return "subscribed to " + command.TopicName, "", nil
+}
+
+// Replay messages and insert client
+func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
+	topic, exist := topics.Get(command.TopicName)
+	if !exist {
+		return
+	}
+
+	client, err := clients.Get(command.SubscriberName)
+	if err != nil || client == nil {
+		return
+	}
+
 	topic.Mu.Lock()
 	defer topic.Mu.Unlock()
 
@@ -131,6 +146,9 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 	// Add client to topic prefix tree
 	topic.Tree.Insert(client)
+}
 
-	return "subscribed to " + command.TopicName, "", nil
+// Backward compatibility
+func ReplayAndInsertSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
+	ReplayAndInsert(command, topics, clients)
 }

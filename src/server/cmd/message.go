@@ -15,6 +15,21 @@ func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any
 		}
 	}
 
+	keyLen := len(command.Key)
+	if len(command.RawKey) > 0 {
+		keyLen = len(command.RawKey)
+	}
+	bodyLen := len(command.Body)
+	if len(command.RawBody) > 0 {
+		bodyLen = len(command.RawBody)
+	}
+	if keyLen+bodyLen > pr.MaxMessageLength {
+		return "", "", &pr.Error{
+			Message: pr.ErrMessageTooLong,
+			Code:    1,
+		}
+	}
+
 	topic.Topic.NewMsgChan <- pr.Message{
 		Key:     command.Key,
 		Body:    command.Body,
