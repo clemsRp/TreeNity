@@ -133,9 +133,7 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 		}
 		if client.Offset <= msg.Offset {
 			if strings.HasPrefix(msg.Key, client.Prefix) {
-				if topic.SendToSubscriber(msg, client, clients) {
-					client.Offset = msg.Offset + 1
-				} else {
+				if !topic.SendToSubscriber(msg, client, clients) {
 					break
 				}
 			} else {
@@ -143,6 +141,12 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 			}
 		}
 	}
+
+	// Subscriber worker goroutine
+	if client.MsgChan == nil {
+		client.MsgChan = make(chan *pr.Message, 100)
+	}
+	go topic.StartSubscriberWorker(client, clients)
 
 	// Add client to topic prefix tree
 	topic.Tree.Insert(client)

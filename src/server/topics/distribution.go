@@ -15,7 +15,8 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 
 		td.Mu.Lock()
 		msg.Offset = uint32(len(td.Topic.Messages))
-		td.Topic.Messages = append(td.Topic.Messages, &msg)
+		msgCopy := msg
+		td.Topic.Messages = append(td.Topic.Messages, &msgCopy)
 
 		subscribers := td.Tree.Filter(msg.Key)
 
@@ -26,8 +27,16 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 
 			if client.Offset <= msg.Offset {
 				if strings.HasPrefix(msg.Key, client.Prefix) {
-					if td.SendToSubscriber(&msg, client, clients) {
-						client.Offset = msg.Offset + 1
+					if client.MsgChan == nil {
+						client.MsgChan = make(chan *pr.Message, 100)
+						go td.StartSubscriberWorker(client, clients)
+					}
+					select {
+					case client.MsgChan <- &msgCopy:
+					default:
+						go func(c *pr.Client, m *pr.Message) {
+							c.MsgChan <- m
+						}(client, &msgCopy)
 					}
 				} else {
 					client.Offset = msg.Offset + 1
@@ -35,6 +44,17 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 			}
 		}
 		td.Mu.Unlock()
+	}
+}
+
+func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashmap) {
+	for msg := range client.MsgChan {
+		if !client.IsActive {
+			break
+		}
+		if !td.SendToSubscriber(msg, client, clients) {
+			break
+		}
 	}
 }
 
@@ -69,6 +89,7 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 		return false
 	}
 
+	client.Offset = msg.Offset + 1
 	return true
 }
 
