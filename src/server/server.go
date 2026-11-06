@@ -35,18 +35,19 @@ func (s *Server) closeClient() {
 		for node := bucket; node != nil; node = node.Next {
 			client := node.Value
 			if !client.IsActive {
-				continue
+				return
 			}
 
 			if client.Writer == nil {
 				writer, err := ipc.NewWriter(client.IpcPath)
 				if err != nil {
-					continue
+					return
 				}
 				client.Writer = writer
 			}
 
-			payload, _ := json.Marshal(pr.CmdMessageDatas{Key: "EOF", Body: "EOF"})
+			SetQuit := pr.ToClient{Quit: true}
+			payload, _ := json.Marshal(SetQuit)
 
 			client.Writer.WriteLine(payload)
 
@@ -56,7 +57,7 @@ func (s *Server) closeClient() {
 	}
 }
 
-func (s *Server) Start() (int, error) {
+func (s *Server) Start() error {
 	// Get FIFO path
 	pid := os.Getpid()
 	path := fmt.Sprintf("%s%d", pr.EntryPoint, pid)
@@ -66,7 +67,7 @@ func (s *Server) Start() (int, error) {
 	// Create Server Reader
 	reader, err := ipc.NewReader(path)
 	if err != nil {
-		return 1, err
+		return err
 	}
 	defer reader.Close()
 
@@ -90,7 +91,7 @@ func (s *Server) Start() (int, error) {
 		}
 	}()
 
-	go func() (int, error){
+	go func() error{
 		defer wg.Done()
 
 		for {
@@ -101,14 +102,14 @@ func (s *Server) Start() (int, error) {
 					if reader != nil {
 						reader.Close()
 					}
-					return 0, err
+					return err
 
 				case errorGet := <-errorChan:
 					if errorGet != nil {
 						if errorGet == io.EOF {
 							continue
 						}
-						return 1, errorGet
+						return errorGet
 					}
 
 				case lineGet := <-lineChan:
@@ -116,7 +117,7 @@ func (s *Server) Start() (int, error) {
 					var command pr.ToServer
 					json_err := json.Unmarshal([]byte(lineGet), &command)
 					if json_err != nil {
-						return 1, json_err
+						return json_err
 					}
 
 					// Get request response
@@ -125,12 +126,13 @@ func (s *Server) Start() (int, error) {
 					// Create Writer
 					writer, write_err := ipc.NewWriter(command.Path)
 					if write_err != nil {
-						return 1, write_err
+						return write_err
 					}
 
 					// Send response to client
-					cmd.SendResponse(writer, command, res, datas, err)
+					send_err := cmd.SendResponse(writer, command, res, datas, err)
 					writer.Close()
+
 					if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
 						var command_datas pr.CmdSubscribeDatas
 						if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
@@ -144,5 +146,5 @@ func (s *Server) Start() (int, error) {
 	<-ctx.Done()
 	wg.Wait()
 
-	return 0, err
+	return err
 }

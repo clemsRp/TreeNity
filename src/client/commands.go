@@ -3,7 +3,6 @@ package client
 import (
 	"errors"
 	pr "treenity/src/protocol"
-	"treenity/src/protocol/ipc"
 
 	"github.com/alecthomas/kong"
 )
@@ -22,25 +21,11 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 		}
 	}
 
-	var permReader *ipc.Reader
-	if command == pr.CmdSubscribe {
-		subCmd := cmd_struct.(pr.CmdSubscribeDatas)
-		permanentPath := subCmd.IpcIdentifier + "." + subCmd.SubscriberName
-		var err error
-		permReader, err = ipc.NewReader(permanentPath)
-		if err != nil {
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
-	}
-
 	// Send command request
 	req_err := c.SendRequest(cmd_struct, command)
 	if req_err != nil {
-		if permReader != nil {
-			permReader.Close()
+		if c.Reader != nil {
+			c.Reader.Close()
 		}
 		return req_err
 	}
@@ -52,7 +37,7 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 		return c.Run(cmd_product)
 
 	case pr.CmdSubscribe:
-		return c.ExecSubscribe(cmd_struct, permReader)
+		return c.ExecSubscribe(cmd_struct)
 	}
 
 	return nil

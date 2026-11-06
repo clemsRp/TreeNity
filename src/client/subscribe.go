@@ -7,21 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	pr "treenity/src/protocol"
-	"treenity/src/protocol/ipc"
 )
 
-func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Error {
+func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	cmd := cmd_struct.(pr.CmdSubscribeDatas)
 
-	var reader *ipc.Reader
-	if len(permReader) > 0 && permReader[0] != nil {
-		reader = permReader[0]
-	} else {
-		permanentPath := cmd.IpcIdentifier + "." + cmd.SubscriberName
-		var err error
-		reader, err = ipc.NewReader(permanentPath)
+	for {
+		data_read, err := c.Reader.ReadLine()
+
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				fmt.Println("Server closed the connection")
@@ -32,27 +26,9 @@ func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Er
 				Code:    1,
 			}
 		}
-	}
-	defer reader.Close()
-
-	for {
-		data_read, err := reader.ReadLine()
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
-
-		if len(data_read) == 0 {
-			continue
-		}
-
-		var data_convert pr.CmdMessageDatas
+		var data_convert pr.ToClient
 		err = json.Unmarshal(data_read, &data_convert)
+
 		if err != nil {
 			return &pr.Error{
 				Message: err.Error(),
@@ -60,36 +36,31 @@ func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Er
 			}
 		}
 
-		if data_convert.Key == "EOF" && data_convert.Body == "EOF" {
+		if data_convert.Quit {
 			return nil
 		}
 
+		var dataMsg pr.CmdMessageDatas
+		msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
+		if msgError != nil {
+			return &pr.Error{
+				Message: msgError.Error(),
+				Code: 1,
+			}
+		}
 
 		if !cmd.Raw {
-			fmt.Printf("%s:%s\n", data_convert.Key, data_convert.Body)
+			fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
 		} else {
-			keyBytes := data_convert.RawKey
-			if len(keyBytes) == 0 {
-				keyBytes = []byte(data_convert.Key)
-			}
-			bodyBytes := data_convert.RawBody
-			if len(bodyBytes) == 0 {
-				bodyBytes = []byte(data_convert.Body)
-			}
-
+			keyByte := []byte(dataMsg.Key)
+			bodyByte := []byte(dataMsg.Body)
 			buffer := new(bytes.Buffer)
-			binary.Write(buffer, binary.LittleEndian, data_convert.Offset)
-			binary.Write(buffer, binary.LittleEndian, int32(len(keyBytes)))
-			buffer.Write(keyBytes)
-			binary.Write(buffer, binary.LittleEndian, int32(len(bodyBytes)))
-			buffer.Write(bodyBytes)
+			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
+			buffer.Write(keyByte)
+			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
+			buffer.Write(bodyByte)
 
-			if _, err := os.Stdout.Write(buffer.Bytes()); err != nil {
-				return &pr.Error{
-					Message: err.Error(),
-					Code:    1,
-				}
-			}
+			fmt.Println(buffer.String())
 		}
 	}
 }

@@ -59,7 +59,10 @@ func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashma
 }
 
 func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clients *h.Hashmap) bool {
-	pipe, err := os.OpenFile(client.IpcPath, os.O_WRONLY|syscall.O_NONBLOCK, 0)
+	var pipe *os.File
+	var err error
+
+	pipe, err = os.OpenFile(client.IpcPath, os.O_WRONLY|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		disconnectSubscriber(client.Id, client, clients)
 		return false
@@ -74,7 +77,19 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 		TopicName: td.Topic.Name,
 	}
 
-	payload, err := json.Marshal(msgData)
+	var payload []byte
+
+	payload, err = json.Marshal(msgData)
+	if err != nil {
+		_ = pipe.Close()
+		return false
+	}
+
+	SendClient := pr.ToClient{
+		Datas: json.RawMessage(payload),
+	}
+
+	payload, err = json.Marshal(SendClient)
 	if err != nil {
 		_ = pipe.Close()
 		return false

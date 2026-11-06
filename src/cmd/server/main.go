@@ -18,7 +18,7 @@ func main() {
 
 	// Create server
 	s := server.NewServer()
-	_, err := s.Start()
+	err := s.Start()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error: ", err.Error())
 		os.Exit(1)
