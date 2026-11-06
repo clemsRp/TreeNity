@@ -30,6 +30,32 @@ func NewServer() *Server {
 	}
 }
 
+func (s *Server) closeClient() {
+	for _, bucket := range s.Clients.Nodes {
+		for node := bucket; node != nil; node = node.Next {
+			client := node.Value
+			if !client.IsActive {
+				continue
+			}
+
+			if client.Writer == nil {
+				writer, err := ipc.NewWriter(client.IpcPath)
+				if err != nil {
+					continue
+				}
+				client.Writer = writer
+			}
+
+			payload, _ := json.Marshal(pr.CmdMessageDatas{Key: "EOF", Body: "EOF"})
+
+			client.Writer.WriteLine(payload)
+
+			_ = client.Writer.Close()
+			client.IsActive = false
+		}
+	}
+}
+
 func (s *Server) Start() (int, error) {
 	// Get FIFO path
 	pid := os.Getpid()
@@ -71,6 +97,10 @@ func (s *Server) Start() (int, error) {
 			select {
 				case <-ctx.Done():
 					fmt.Println("Server shutingdown")
+					s.closeClient()
+					if reader != nil {
+						reader.Close()
+					}
 					return 0, err
 
 				case errorGet := <-errorChan:

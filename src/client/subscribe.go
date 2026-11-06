@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -22,6 +23,10 @@ func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Er
 		var err error
 		reader, err = ipc.NewReader(permanentPath)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				fmt.Println("Server closed the connection")
+				return nil
+			}
 			return &pr.Error{
 				Message: err.Error(),
 				Code:    1,
@@ -54,6 +59,11 @@ func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Er
 				Code:    1,
 			}
 		}
+
+		if data_convert.Key == "EOF" && data_convert.Body == "EOF" {
+			return nil
+		}
+
 
 		if !cmd.Raw {
 			fmt.Printf("%s:%s\n", data_convert.Key, data_convert.Body)
