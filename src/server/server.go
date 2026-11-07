@@ -57,29 +57,7 @@ func (s *Server) closeClient() {
 	}
 }
 
-func (s *Server) Start() error {
-	// Get FIFO path
-	pid := os.Getpid()
-	path := fmt.Sprintf("%s%d", pr.EntryPoint, pid)
-
-	fmt.Println(path)
-
-	// Create Server Reader
-	reader, err := ipc.NewReader(path)
-	if err != nil {
-		return err
-	}
-	defer reader.Close()
-
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	lineChan := make(chan string)
-	errorChan := make(chan error)
-
+func ReadChannel(reader *ipc.Reader, lineChan chan string, errorChan chan error) {
 	go func()  {
 		for {
 			line, err := reader.ReadLine()
@@ -90,7 +68,9 @@ func (s *Server) Start() error {
 			lineChan <- string(line)
 		}
 	}()
+}
 
+func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan string, errorChan chan error, ctx context.Context, wg *sync.WaitGroup) {
 	go func() error{
 		defer wg.Done()
 
@@ -142,6 +122,34 @@ func (s *Server) Start() error {
 			}
 		}
 	}()
+
+} 
+
+func (s *Server) Start() error {
+	// Get FIFO path
+	pid := os.Getpid()
+	path := fmt.Sprintf("%s%d", pr.EntryPoint, pid)
+
+	fmt.Println(path)
+
+	// Create Server Reader
+	reader, err := ipc.NewReader(path)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	lineChan := make(chan string)
+	errorChan := make(chan error)
+
+	ReadChannel(reader, lineChan, errorChan)
+	s.RequestAction(reader, err, lineChan, errorChan, ctx, &wg)
 
 	<-ctx.Done()
 	wg.Wait()

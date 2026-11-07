@@ -10,6 +10,23 @@ import (
 	pr "treenity/src/protocol"
 )
 
+func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) {
+		if !cmd.Raw {
+			fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
+		} else {
+			keyByte := []byte(dataMsg.Key)
+			bodyByte := []byte(dataMsg.Body)
+			buffer := new(bytes.Buffer)
+			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
+			buffer.Write(keyByte)
+			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
+			buffer.Write(bodyByte)
+
+			fmt.Println(buffer.String())
+		}
+
+}
+
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	cmd := cmd_struct.(pr.CmdSubscribeDatas)
 
@@ -49,18 +66,6 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 			}
 		}
 
-		if !cmd.Raw {
-			fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
-		} else {
-			keyByte := []byte(dataMsg.Key)
-			bodyByte := []byte(dataMsg.Body)
-			buffer := new(bytes.Buffer)
-			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
-			buffer.Write(keyByte)
-			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
-			buffer.Write(bodyByte)
-
-			fmt.Println(buffer.String())
-		}
+		PrintData(dataMsg, cmd)
 	}
 }
