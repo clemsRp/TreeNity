@@ -1,10 +1,14 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
 	cmd "treenity/src/server/cmd"
@@ -26,6 +30,101 @@ func NewServer() *Server {
 	}
 }
 
+func (s *Server) closeClient() {
+	for _, bucket := range s.Clients.Nodes {
+		for node := bucket; node != nil; node = node.Next {
+			client := node.Value
+			if !client.IsActive {
+				return
+			}
+
+			if client.Writer == nil {
+				writer, err := ipc.NewWriter(client.IpcPath)
+				if err != nil {
+					return
+				}
+				client.Writer = writer
+			}
+
+			SetQuit := pr.ToClient{Quit: true}
+			payload, _ := json.Marshal(SetQuit)
+
+			client.Writer.WriteLine(payload)
+
+			_ = client.Writer.Close()
+			client.IsActive = false
+		}
+	}
+}
+
+func ReadChannel(reader *ipc.Reader, lineChan chan string, errorChan chan error) {
+	go func()  {
+		for {
+			line, err := reader.ReadLine()
+			if err != nil {
+				errorChan <- err
+				return
+			}
+			lineChan <- string(line)
+		}
+	}()
+}
+
+func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan string, errorChan chan error, ctx context.Context, wg *sync.WaitGroup) {
+	go func() error{
+		defer wg.Done()
+
+		for {
+			select {
+				case <-ctx.Done():
+					fmt.Println("Server shutingdown")
+					s.closeClient()
+					if reader != nil {
+						reader.Close()
+					}
+					return err
+
+				case errorGet := <-errorChan:
+					if errorGet != nil {
+						if errorGet == io.EOF {
+							continue
+						}
+						return errorGet
+					}
+
+				case lineGet := <-lineChan:
+					// Cast request
+					var command pr.ToServer
+					json_err := json.Unmarshal([]byte(lineGet), &command)
+					if json_err != nil {
+						return json_err
+					}
+
+					// Get request response
+					res, datas, err := s.HandleCommands(command)
+
+					// Create Writer
+					writer, write_err := ipc.NewWriter(command.Path)
+					if write_err != nil {
+						return write_err
+					}
+
+					// Send response to client
+					send_err := cmd.SendResponse(writer, command, res, datas, err)
+					writer.Close()
+
+					if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
+						var command_datas pr.CmdSubscribeDatas
+						if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
+							cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
+						}
+					}
+			}
+		}
+	}()
+
+} 
+
 func (s *Server) Start() error {
 	// Get FIFO path
 	pid := os.Getpid()
@@ -40,40 +139,20 @@ func (s *Server) Start() error {
 	}
 	defer reader.Close()
 
-	for {
-		line, read_err := reader.ReadLine()
-		if read_err != nil {
-			if read_err == io.EOF {
-				continue
-			}
-			return read_err
-		}
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
-		// Cast request
-		var command pr.ToServer
-		json_err := json.Unmarshal(line, &command)
-		if json_err != nil {
-			continue
-		}
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-		// Get request response
-		res, datas, err := s.HandleCommands(command)
+	lineChan := make(chan string)
+	errorChan := make(chan error)
 
-		// Create Writer
-		writer, write_err := ipc.NewWriter(command.Path)
-		if write_err != nil {
-			continue
-		}
+	ReadChannel(reader, lineChan, errorChan)
+	s.RequestAction(reader, err, lineChan, errorChan, ctx, &wg)
 
-		// Send response to client
-		send_err := cmd.SendResponse(writer, command, res, datas, err)
-		writer.Close()
+	<-ctx.Done()
+	wg.Wait()
 
-		if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
-			var command_datas pr.CmdSubscribeDatas
-			if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
-				cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
-			}
-		}
-	}
+	return err
 }

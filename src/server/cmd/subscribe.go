@@ -21,10 +21,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	}
 
 	// Subscriber IPC channel
-	permanentIpcPath := command.IpcIdentifier + "." + command.SubscriberName
-	if command.IpcIdentifier == "" {
-		permanentIpcPath = ipcPath
-	}
+	permanentIpcPath := ipcPath
 
 	// Check topic exist
 	_, exist := topics.Get(command.TopicName)

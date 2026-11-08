@@ -2,62 +2,64 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 	pr "treenity/src/protocol"
 )
 
-func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
-	if cmd.Raw {
-		// Binary mode
-		reader := bufio.NewReader(os.Stdin)
+func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
+	reader := bufio.NewReader(os.Stdin)
 
-		for {
-			var keyLen int32
-			err := binary.Read(reader, binary.LittleEndian, &keyLen)
-			if err == io.EOF {
-				break
-			}
-			if err != nil || keyLen < 0 {
-				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
-			}
-
-			keyBuf := make([]byte, keyLen)
-			if _, err := io.ReadFull(reader, keyBuf); err != nil {
-				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
-			}
-
-			var valLen int32
-			if err := binary.Read(reader, binary.LittleEndian, &valLen); err != nil || valLen < 0 {
-				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
-			}
-
-			valBuf := make([]byte, valLen)
-			if _, err := io.ReadFull(reader, valBuf); err != nil {
-				return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
-			}
-
-			if int(keyLen)+int(valLen) > pr.MaxMessageLength {
-				return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
-			}
-
-			msgStruct := pr.CmdMessageDatas{
-				Key:       string(keyBuf),
-				Body:      string(valBuf),
-				RawKey:    keyBuf,
-				RawBody:   valBuf,
-				TopicName: cmd.TopicName,
-			}
-			if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
-				return sendErr
-			}
+	for {
+		var keyLen int32
+		err := binary.Read(reader, binary.LittleEndian, &keyLen)
+		if err == io.EOF {
+			break
 		}
-		return nil
-	}
+		if err != nil || keyLen < 0 {
+			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+		}
 
-	// Text mode
+		keyBuf := make([]byte, keyLen)
+		if _, err := io.ReadFull(reader, keyBuf); err != nil {
+			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+		}
+
+		var valLen int32
+		if err := binary.Read(reader, binary.LittleEndian, &valLen); err != nil || valLen < 0 {
+			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+		}
+
+		valBuf := make([]byte, valLen)
+		if _, err := io.ReadFull(reader, valBuf); err != nil {
+			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
+		}
+
+		if int(keyLen)+int(valLen) > pr.MaxMessageLength {
+			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+		}
+
+		msgStruct := pr.CmdMessageDatas{
+			Key:       string(keyBuf),
+			Body:      string(valBuf),
+			RawKey:    keyBuf,
+			RawBody:   valBuf,
+			TopicName: cmd.TopicName,
+		}
+		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+			return sendErr
+		}
+	}
+	return nil
+}
+
+func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -84,6 +86,42 @@ func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 		return &pr.Error{Message: scanErr.Error(), Code: 1}
 	}
 	return nil
+}
+
+func (c *Client) SignalThread(ctx context.Context) {
+	go func ()  {
+		<-ctx.Done()
+		c.Disconnect()
+		os.Exit(0)
+	}()
+}
+
+func (c *Client) CheckServerDown() {
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if _, err := os.Stat(c.Writer.Path); os.IsNotExist(err) {
+				c.Disconnect()
+				os.Exit(0)
+			}
+		}
+	}()
+}
+
+func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	c.CheckServerDown()
+	c.SignalThread(ctx)
+
+	if cmd.Raw {
+		return c.RawMode(cmd)
+	} else {
+		return c.TextMode(cmd)
+	}
 }
 
 // Backward compatibility

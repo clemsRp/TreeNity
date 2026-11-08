@@ -2,38 +2,54 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"os"
+	"os/signal"
+	"syscall"
 	pr "treenity/src/protocol"
-	"treenity/src/protocol/ipc"
 )
 
-func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Error {
+func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) {
+		if !cmd.Raw {
+			fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
+		} else {
+			keyByte := []byte(dataMsg.Key)
+			bodyByte := []byte(dataMsg.Body)
+			buffer := new(bytes.Buffer)
+			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
+			buffer.Write(keyByte)
+			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
+			buffer.Write(bodyByte)
+
+			fmt.Println(buffer.String())
+		}
+
+}
+
+func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	cmd := cmd_struct.(pr.CmdSubscribeDatas)
 
-	var reader *ipc.Reader
-	if len(permReader) > 0 && permReader[0] != nil {
-		reader = permReader[0]
-	} else {
-		permanentPath := cmd.IpcIdentifier + "." + cmd.SubscriberName
-		var err error
-		reader, err = ipc.NewReader(permanentPath)
-		if err != nil {
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
-	}
-	defer reader.Close()
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	go func()  {
+		<-ctx.Done()
+		c.Reader.Close()
+	}()
 
 	for {
-		data_read, err := reader.ReadLine()
+		data_read, err := c.Reader.ReadLine()
+
 		if err != nil {
-			if err == io.EOF {
+			if ctx.Err() != nil {
+				return nil
+			}
+			if errors.Is(err, io.EOF) {
+				fmt.Println("Server closed the connection")
 				return nil
 			}
 			return &pr.Error{
@@ -41,13 +57,9 @@ func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Er
 				Code:    1,
 			}
 		}
-
-		if len(data_read) == 0 {
-			continue
-		}
-
-		var data_convert pr.CmdMessageDatas
+		var data_convert pr.ToClient
 		err = json.Unmarshal(data_read, &data_convert)
+
 		if err != nil {
 			return &pr.Error{
 				Message: err.Error(),
@@ -55,31 +67,18 @@ func (c *Client) ExecSubscribe(cmd_struct any, permReader ...*ipc.Reader) *pr.Er
 			}
 		}
 
-		if !cmd.Raw {
-			fmt.Printf("%s:%s\n", data_convert.Key, data_convert.Body)
-		} else {
-			keyBytes := data_convert.RawKey
-			if len(keyBytes) == 0 {
-				keyBytes = []byte(data_convert.Key)
-			}
-			bodyBytes := data_convert.RawBody
-			if len(bodyBytes) == 0 {
-				bodyBytes = []byte(data_convert.Body)
-			}
+		if data_convert.Quit {
+			return nil
+		}
 
-			buffer := new(bytes.Buffer)
-			binary.Write(buffer, binary.LittleEndian, data_convert.Offset)
-			binary.Write(buffer, binary.LittleEndian, int32(len(keyBytes)))
-			buffer.Write(keyBytes)
-			binary.Write(buffer, binary.LittleEndian, int32(len(bodyBytes)))
-			buffer.Write(bodyBytes)
-
-			if _, err := os.Stdout.Write(buffer.Bytes()); err != nil {
-				return &pr.Error{
-					Message: err.Error(),
-					Code:    1,
-				}
+		var dataMsg pr.CmdMessageDatas
+		msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
+		if msgError != nil {
+			return &pr.Error{
+				Message: msgError.Error(),
+				Code: 1,
 			}
 		}
+		PrintData(dataMsg, cmd)
 	}
 }
