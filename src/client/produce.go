@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 	pr "treenity/src/protocol"
 )
 
@@ -95,10 +96,25 @@ func (c *Client) SignalThread(ctx context.Context) {
 	}()
 }
 
+func (c *Client) CheckServerDown() {
+	go func() {
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if _, err := os.Stat(c.Writer.Path); os.IsNotExist(err) {
+				c.Disconnect()
+				os.Exit(0)
+			}
+		}
+	}()
+}
+
 func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	c.CheckServerDown()
 	c.SignalThread(ctx)
 
 	if cmd.Raw {
