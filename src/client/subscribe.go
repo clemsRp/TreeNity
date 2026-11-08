@@ -2,11 +2,14 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os/signal"
+	"syscall"
 	pr "treenity/src/protocol"
 )
 
@@ -30,10 +33,21 @@ func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) {
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	cmd := cmd_struct.(pr.CmdSubscribeDatas)
 
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	go func()  {
+		<-ctx.Done()
+		c.Reader.Close()
+	}()
+
 	for {
 		data_read, err := c.Reader.ReadLine()
 
 		if err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
 			if errors.Is(err, io.EOF) {
 				fmt.Println("Server closed the connection")
 				return nil
@@ -65,7 +79,6 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 				Code: 1,
 			}
 		}
-
 		PrintData(dataMsg, cmd)
 	}
 }
