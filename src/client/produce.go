@@ -2,10 +2,13 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"encoding/binary"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	pr "treenity/src/protocol"
 )
 
@@ -84,7 +87,20 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 	return nil
 }
 
+func (c *Client) SignalThread(ctx context.Context) {
+	go func ()  {
+		<-ctx.Done()
+		c.Disconnect()
+		os.Exit(0)
+	}()
+}
+
 func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
+	c.SignalThread(ctx)
+
 	if cmd.Raw {
 		return c.RawMode(cmd)
 	} else {
