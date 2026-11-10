@@ -8,26 +8,55 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/signal"
 	"syscall"
 	pr "treenity/src/protocol"
 )
 
-func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) {
-		if !cmd.Raw {
-			fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
-		} else {
-			keyByte := []byte(dataMsg.Key)
-			bodyByte := []byte(dataMsg.Body)
-			buffer := new(bytes.Buffer)
-			binary.Write(buffer, binary.LittleEndian, int32(len(keyByte)))
-			buffer.Write(keyByte)
-			binary.Write(buffer, binary.LittleEndian, int32(len(bodyByte)))
-			buffer.Write(bodyByte)
+func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) *pr.Error {
+	// Handle text mode
+	if !cmd.Raw {
+		fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
+		return nil
+	}
 
-			fmt.Println(buffer.String())
+	// Init buffer
+	buffer := new(bytes.Buffer)
+
+	// Print offset
+	off_err := binary.Write(buffer, binary.LittleEndian, int32(dataMsg.Offset))
+	if off_err != nil {
+		return &pr.Error{
+			Message: off_err.Error(),
+			Code:    1,
+		}
+	}
+
+	// Write datas on buffer
+	for _, data := range [][]byte{dataMsg.RawKey, dataMsg.RawBody} {
+		// Write data len
+		if err := binary.Write(buffer, binary.LittleEndian, int32(len(data))); err != nil {
+			return &pr.Error{
+				Message: err.Error(),
+				Code:    1,
+			}
 		}
 
+		// Write data content
+		buffer.Write(data)
+	}
+
+	// Write buffer on output
+	_, write_err := os.Stdout.Write(buffer.Bytes())
+	if write_err != nil {
+		return &pr.Error{
+			Message: write_err.Error(),
+			Code:    1,
+		}
+	}
+
+	return nil
 }
 
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
@@ -36,7 +65,7 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	go func()  {
+	go func() {
 		<-ctx.Done()
 		c.Reader.Close()
 	}()
@@ -76,9 +105,13 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 		if msgError != nil {
 			return &pr.Error{
 				Message: msgError.Error(),
-				Code: 1,
+				Code:    1,
 			}
 		}
-		PrintData(dataMsg, cmd)
+
+		print_err := PrintData(dataMsg, cmd)
+		if print_err != nil {
+			return print_err
+		}
 	}
 }
