@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 	pr "treenity/src/protocol"
 )
 
@@ -59,57 +60,98 @@ func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) *pr.Error {
 	return nil
 }
 
-func (c *Client) ExecSubscribe(cmd pr.CmdSubscribeDatas) *pr.Error {
+func (c *Client) ReadData(lineChan chan []byte, errChan chan error) {
+	go func() {
+		for {
+			data_read, err := c.Reader.ReadLine()
+			if err != nil {
+				errChan <- err
+				return
+			}
+			lineChan <- data_read
+		}
+	}()
+}
+
+func ProcessExists(serverPid int64) bool {
+	err := syscall.Kill(int(serverPid), 0)
+
+	if errors.Is(err, syscall.ESRCH) {
+		return true
+	}
+	return false
+}
+
+func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
+	cmd := cmd_struct.(pr.CmdSubscribeDatas)
+
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	go func() {
-		<-ctx.Done()
-		c.Reader.Close()
-	}()
+	lineChan := make(chan []byte)
+	errChan := make(chan error)
+
+	c.ReadData(lineChan, errChan)
+
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
 
 	for {
-		data_read, err := c.Reader.ReadLine()
-
-		if err != nil {
-			if ctx.Err() != nil {
+		select {
+			case <-ctx.Done():
 				return nil
-			}
-			if errors.Is(err, io.EOF) {
-				fmt.Fprintln(os.Stderr, "Server closed the connection")
+
+			case <-ticker.C:
+				if ProcessExists(c.ServerPid) {
+					fmt.Println("Server down")
+					return nil
+				}
+
+			case err := <-errChan:
+				if err != nil {
+					if ctx.Err() != nil {
+						return nil
+					}
+					if errors.Is(err, io.EOF) {
+						fmt.Println("Server closed the connection")
+						return nil
+					}
+					return &pr.Error{
+						Message: err.Error(),
+						Code:    1,
+					}
+				}
 				return nil
-			}
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
-		var data_convert pr.ToClient
-		err = json.Unmarshal(data_read, &data_convert)
 
-		if err != nil {
-			return &pr.Error{
-				Message: err.Error(),
-				Code:    1,
-			}
-		}
+			case data := <-lineChan:
+				var data_convert pr.ToClient
+				err := json.Unmarshal(data, &data_convert)
 
-		if data_convert.Quit {
-			return nil
-		}
+				if err != nil {
+					return &pr.Error{
+						Message: err.Error(),
+						Code:    1,
+					}
+				}
 
-		var dataMsg pr.CmdMessageDatas
-		msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
-		if msgError != nil {
-			return &pr.Error{
-				Message: msgError.Error(),
-				Code:    1,
-			}
-		}
+				if data_convert.Quit {
+					return nil
+				}
 
-		print_err := PrintData(dataMsg, cmd)
-		if print_err != nil {
-			return print_err
+				var dataMsg pr.CmdMessageDatas
+				msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
+				if msgError != nil {
+					return &pr.Error{
+						Message: msgError.Error(),
+						Code: 1,
+					}
+				}
+
+				print_err := PrintData(dataMsg, cmd)
+				if print_err != nil {
+					return print_err
+				}
+				PrintData(dataMsg, cmd)
 		}
 	}
 }
