@@ -1,14 +1,16 @@
-package test
+package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
-	"treenity/src/server/cmd"
+
 	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
+	"treenity/src/server/cmd"
 	h "treenity/src/server/hashmap"
 	top "treenity/src/server/topics"
 )
@@ -65,8 +67,8 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 
 	// 1. Send first message to both active clients
 	topicData.Topic.NewMsgChan <- pr.Message{
-		Key:  "sports.football",
-		Body: "Goal!",
+		Key:  []byte("sports.football"),
+		Body: []byte("Goal!"),
 	}
 
 	// Read from both readers
@@ -78,7 +80,7 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 	if err := json.Unmarshal(line1, &msg1); err != nil {
 		t.Fatalf("Expected JSON from r1, got '%s', err: %v", string(line1), err)
 	}
-	if msg1.Key != "sports.football" || msg1.Body != "Goal!" || msg1.Offset != 0 {
+	if !bytes.Equal(msg1.Key, []byte("sports.football")) || !bytes.Equal(msg1.Body, []byte("Goal!")) || msg1.Offset != 0 {
 		t.Fatalf("Expected sports.football:Goal! offset 0, got %+v", msg1)
 	}
 
@@ -90,7 +92,7 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 	if err := json.Unmarshal(line2, &msg2); err != nil {
 		t.Fatalf("Expected JSON from r2, got '%s', err: %v", string(line2), err)
 	}
-	if msg2.Key != "sports.football" || msg2.Body != "Goal!" || msg2.Offset != 0 {
+	if !bytes.Equal(msg2.Key, []byte("sports.football")) || !bytes.Equal(msg2.Body, []byte("Goal!")) || msg2.Offset != 0 {
 		t.Fatalf("Expected sports.football:Goal! offset 0, got %+v", msg2)
 	}
 
@@ -108,8 +110,8 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 
 	// Send second message
 	topicData.Topic.NewMsgChan <- pr.Message{
-		Key:  "sports.tennis",
-		Body: "Ace!",
+		Key:  []byte("sports.tennis"),
+		Body: []byte("Ace!"),
 	}
 
 	// Read on r1
@@ -121,7 +123,7 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 	if err := json.Unmarshal(line1, &msg3); err != nil {
 		t.Fatalf("Expected JSON on second message, got '%s', err: %v", string(line1), err)
 	}
-	if msg3.Key != "sports.tennis" || msg3.Body != "Ace!" || msg3.Offset != 1 {
+	if !bytes.Equal(msg3.Key, []byte("sports.tennis")) || !bytes.Equal(msg3.Body, []byte("Ace!")) || msg3.Offset != 1 {
 		t.Fatalf("Expected sports.tennis:Ace! offset 1, got %+v", msg3)
 	}
 
@@ -137,8 +139,8 @@ func TestAcceptNewMessages_DistributionAndBrokenPipe(t *testing.T) {
 
 	// 3. Test prefix filtering on client1 (which has prefix "sports.")
 	topicData.Topic.NewMsgChan <- pr.Message{
-		Key:  "news.politics",
-		Body: "Election",
+		Key:  []byte("news.politics"),
+		Body: []byte("Election"),
 	}
 
 	time.Sleep(50 * time.Millisecond)
@@ -166,9 +168,9 @@ func TestHandleCmdSubscribe_Replay(t *testing.T) {
 
 	// Add 3 messages directly into topic
 	topicData.Topic.Messages = append(topicData.Topic.Messages,
-		&pr.Message{Key: "sports.golf", Body: "Hole in one", Offset: 0},
-		&pr.Message{Key: "cooking.cake", Body: "Delicious", Offset: 1},
-		&pr.Message{Key: "sports.ski", Body: "Snow", Offset: 2},
+		&pr.Message{Key: []byte("sports.golf"), Body: []byte("Hole in one"), Offset: 0},
+		&pr.Message{Key: []byte("cooking.cake"), Body: []byte("Delicious"), Offset: 1},
+		&pr.Message{Key: []byte("sports.ski"), Body: []byte("Snow"), Offset: 2},
 	)
 
 	subPipe := filepath.Join(tmpDir, "sub_replay.pipe")
@@ -203,7 +205,7 @@ func TestHandleCmdSubscribe_Replay(t *testing.T) {
 	if err := json.Unmarshal(l1, &m1); err != nil {
 		t.Fatalf("Failed to unmarshal m1: %v", err)
 	}
-	if m1.Key != "sports.golf" || m1.Offset != 0 {
+	if !bytes.Equal(m1.Key, []byte("sports.golf")) || m1.Offset != 0 {
 		t.Fatalf("Expected sports.golf offset 0, got %+v", m1)
 	}
 
@@ -216,7 +218,7 @@ func TestHandleCmdSubscribe_Replay(t *testing.T) {
 	if err := json.Unmarshal(l2, &m2); err != nil {
 		t.Fatalf("Failed to unmarshal m2: %v", err)
 	}
-	if m2.Key != "sports.ski" || m2.Offset != 2 {
+	if !bytes.Equal(m2.Key, []byte("sports.ski")) || m2.Offset != 2 {
 		t.Fatalf("Expected sports.ski offset 2, got %+v", m2)
 	}
 

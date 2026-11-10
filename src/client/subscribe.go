@@ -18,7 +18,7 @@ import (
 func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) *pr.Error {
 	// Handle text mode
 	if !cmd.Raw {
-		fmt.Printf("%s:%s\n", dataMsg.Key, dataMsg.Body)
+		fmt.Printf("%s:%s\n", string(dataMsg.Key), string(dataMsg.Body))
 		return nil
 	}
 
@@ -35,7 +35,7 @@ func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) *pr.Error {
 	}
 
 	// Write datas on buffer
-	for _, data := range [][]byte{dataMsg.RawKey, dataMsg.RawBody} {
+	for _, data := range [][]byte{dataMsg.Key, dataMsg.Body} {
 		// Write data len
 		if err := binary.Write(buffer, binary.LittleEndian, int32(len(data))); err != nil {
 			return &pr.Error{
