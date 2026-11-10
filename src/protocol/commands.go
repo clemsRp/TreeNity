@@ -54,11 +54,8 @@ type CmdInfoDatas struct {
 }
 
 type CmdMessageDatas struct {
-	Key       string `json:"key"`
-	Body      string `json:"body"`
 	TopicName string `json:"topic_name"`
-	RawKey    []byte `json:"raw_key,omitempty"`
-	RawBody   []byte `json:"raw_body,omitempty"`
+	Key       []byte `json:"key,omitempty"`
+	Body      []byte `json:"body,omitempty"`
 	Offset    uint32 `json:"offset"`
-	Raw       bool   `json:"raw"`
 }

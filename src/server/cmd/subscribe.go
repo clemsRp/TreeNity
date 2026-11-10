@@ -129,7 +129,7 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 			break
 		}
 		if client.Offset <= msg.Offset {
-			if strings.HasPrefix(msg.Key, client.Prefix) {
+			if strings.HasPrefix(string(msg.Key), client.Prefix) {
 				if !topic.SendToSubscriber(msg, client, clients) {
 					break
 				}

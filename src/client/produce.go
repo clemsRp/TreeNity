@@ -48,10 +48,9 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 		}
 
 		msgStruct := pr.CmdMessageDatas{
-			RawKey:    keyBuf,
-			RawBody:   valBuf,
+			Key:       keyBuf,
+			Body:      valBuf,
 			TopicName: cmd.TopicName,
-			Raw:       cmd.Raw,
 		}
 		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
@@ -75,10 +74,9 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 		}
 
 		msgStruct := pr.CmdMessageDatas{
-			Key:       key,
-			Body:      body,
+			Key:       []byte(key),
+			Body:      []byte(body),
 			TopicName: cmd.TopicName,
-			Raw:       cmd.Raw,
 		}
 		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr

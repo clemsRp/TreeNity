@@ -18,7 +18,7 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 		msgCopy := msg
 		td.Topic.Messages = append(td.Topic.Messages, &msgCopy)
 
-		subscribers := td.Tree.Filter(msg.Key)
+		subscribers := td.Tree.Filter(string(msg.Key))
 
 		for _, client := range subscribers {
 			if !client.IsActive {
@@ -26,7 +26,7 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 			}
 
 			if client.Offset <= msg.Offset {
-				if strings.HasPrefix(msg.Key, client.Prefix) {
+				if strings.HasPrefix(string(msg.Key), client.Prefix) {
 					if client.MsgChan == nil {
 						client.MsgChan = make(chan *pr.Message, 100)
 						go td.StartSubscriberWorker(client, clients)
@@ -71,8 +71,6 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 	msgData := pr.CmdMessageDatas{
 		Key:       msg.Key,
 		Body:      msg.Body,
-		RawKey:    msg.RawKey,
-		RawBody:   msg.RawBody,
 		Offset:    msg.Offset,
 		TopicName: td.Topic.Name,
 	}
