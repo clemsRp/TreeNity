@@ -58,7 +58,7 @@ func (s *Server) closeClient() {
 }
 
 func ReadChannel(reader *ipc.Reader, lineChan chan string, errorChan chan error) {
-	go func()  {
+	go func() {
 		for {
 			line, err := reader.ReadLine()
 			if err != nil {
@@ -71,59 +71,59 @@ func ReadChannel(reader *ipc.Reader, lineChan chan string, errorChan chan error)
 }
 
 func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan string, errorChan chan error, ctx context.Context, wg *sync.WaitGroup) {
-	go func() error{
+	go func() error {
 		defer wg.Done()
 
 		for {
 			select {
-				case <-ctx.Done():
-					fmt.Println("Server shutingdown")
-					s.closeClient()
-					if reader != nil {
-						reader.Close()
+			case <-ctx.Done():
+				fmt.Fprintln(os.Stderr, "Server shutingdown")
+				s.closeClient()
+				if reader != nil {
+					reader.Close()
+				}
+				return err
+
+			case errorGet := <-errorChan:
+				if errorGet != nil {
+					if errorGet == io.EOF {
+						continue
 					}
-					return err
+					return errorGet
+				}
 
-				case errorGet := <-errorChan:
-					if errorGet != nil {
-						if errorGet == io.EOF {
-							continue
-						}
-						return errorGet
+			case lineGet := <-lineChan:
+				// Cast request
+				var command pr.ToServer
+				json_err := json.Unmarshal([]byte(lineGet), &command)
+				if json_err != nil {
+					return json_err
+				}
+
+				// Get request response
+				res, datas, err := s.HandleCommands(command)
+
+				// Create Writer
+				writer, write_err := ipc.NewWriter(command.Path)
+				if write_err != nil {
+					return write_err
+				}
+
+				// Send response to client
+				send_err := cmd.SendResponse(writer, command, res, datas, err)
+				writer.Close()
+
+				if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
+					var command_datas pr.CmdSubscribeDatas
+					if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
+						cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
 					}
-
-				case lineGet := <-lineChan:
-					// Cast request
-					var command pr.ToServer
-					json_err := json.Unmarshal([]byte(lineGet), &command)
-					if json_err != nil {
-						return json_err
-					}
-
-					// Get request response
-					res, datas, err := s.HandleCommands(command)
-
-					// Create Writer
-					writer, write_err := ipc.NewWriter(command.Path)
-					if write_err != nil {
-						return write_err
-					}
-
-					// Send response to client
-					send_err := cmd.SendResponse(writer, command, res, datas, err)
-					writer.Close()
-
-					if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
-						var command_datas pr.CmdSubscribeDatas
-						if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
-							cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
-						}
-					}
+				}
 			}
 		}
 	}()
 
-} 
+}
 
 func (s *Server) Start() error {
 	// Get FIFO path
