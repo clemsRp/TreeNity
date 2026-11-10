@@ -98,60 +98,59 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 
 	for {
 		select {
-			case <-ctx.Done():
-				return nil
+		case <-ctx.Done():
+			return nil
 
-			case <-ticker.C:
-				if ProcessExists(c.ServerPid) {
-					fmt.Println("Server down")
+		case <-ticker.C:
+			if ProcessExists(c.ServerPid) {
+				fmt.Fprintln(os.Stderr, "Server down")
+				return nil
+			}
+
+		case err := <-errChan:
+			if err != nil {
+				if ctx.Err() != nil {
 					return nil
 				}
-
-			case err := <-errChan:
-				if err != nil {
-					if ctx.Err() != nil {
-						return nil
-					}
-					if errors.Is(err, io.EOF) {
-						fmt.Println("Server closed the connection")
-						return nil
-					}
-					return &pr.Error{
-						Message: err.Error(),
-						Code:    1,
-					}
-				}
-				return nil
-
-			case data := <-lineChan:
-				var data_convert pr.ToClient
-				err := json.Unmarshal(data, &data_convert)
-
-				if err != nil {
-					return &pr.Error{
-						Message: err.Error(),
-						Code:    1,
-					}
-				}
-
-				if data_convert.Quit {
+				if errors.Is(err, io.EOF) {
+					fmt.Fprintln(os.Stderr, "Server closed the connection")
 					return nil
 				}
-
-				var dataMsg pr.CmdMessageDatas
-				msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
-				if msgError != nil {
-					return &pr.Error{
-						Message: msgError.Error(),
-						Code: 1,
-					}
+				return &pr.Error{
+					Message: err.Error(),
+					Code:    1,
 				}
+			}
+			return nil
 
-				print_err := PrintData(dataMsg, cmd)
-				if print_err != nil {
-					return print_err
+		case data := <-lineChan:
+			var data_convert pr.ToClient
+			err := json.Unmarshal(data, &data_convert)
+
+			if err != nil {
+				return &pr.Error{
+					Message: err.Error(),
+					Code:    1,
 				}
-				PrintData(dataMsg, cmd)
+			}
+
+			if data_convert.Quit {
+				return nil
+			}
+
+			var dataMsg pr.CmdMessageDatas
+			msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
+			if msgError != nil {
+				return &pr.Error{
+					Message: msgError.Error(),
+					Code:    1,
+				}
+			}
+
+			print_err := PrintData(dataMsg, cmd)
+			if print_err != nil {
+				return print_err
+			}
 		}
 	}
 }
