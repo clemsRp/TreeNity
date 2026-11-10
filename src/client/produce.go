@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -103,6 +105,14 @@ func (c *Client) CheckServerDown() {
 
 		for range ticker.C {
 			if _, err := os.Stat(c.Writer.Path); os.IsNotExist(err) {
+				fmt.Println("Server down")
+				c.Disconnect()
+				os.Exit(0)
+			}
+
+			err := syscall.Kill(int(c.ServerPid), 0)
+			if errors.Is(err, syscall.ESRCH) {
+				fmt.Println("Server down")
 				c.Disconnect()
 				os.Exit(0)
 			}

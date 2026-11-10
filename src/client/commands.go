@@ -2,6 +2,8 @@ package client
 
 import (
 	"errors"
+	"strconv"
+	"strings"
 	pr "treenity/src/protocol"
 
 	"github.com/alecthomas/kong"
@@ -12,6 +14,15 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	i_struct := &pr.CLI.IpcIdentifier
 	ipcPath := i_struct.IpcIdentifier
 	command := ctx.Selected().Name
+	serverPid := strings.SplitN(ipcPath, pr.EntryPoint, 2)[1]
+	var err error
+	c.ServerPid, err = strconv.ParseInt(serverPid, 10, 64)
+	if err != nil {
+		return &pr.Error{
+			Message: err.Error(),
+			Code: 1,
+		}
+	}
 
 	cmd_struct, cmd_err := c.GetCmdStruct(i_struct, ipcPath, command)
 	if cmd_err != nil {
