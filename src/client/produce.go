@@ -46,11 +46,10 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 		}
 
 		msgStruct := pr.CmdMessageDatas{
-			Key:       string(keyBuf),
-			Body:      string(valBuf),
 			RawKey:    keyBuf,
 			RawBody:   valBuf,
 			TopicName: cmd.TopicName,
+			Raw:       cmd.Raw,
 		}
 		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
@@ -77,6 +76,7 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 			Key:       key,
 			Body:      body,
 			TopicName: cmd.TopicName,
+			Raw:       cmd.Raw,
 		}
 		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
@@ -89,7 +89,7 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 }
 
 func (c *Client) SignalThread(ctx context.Context) {
-	go func ()  {
+	go func() {
 		<-ctx.Done()
 		c.Disconnect()
 		os.Exit(0)

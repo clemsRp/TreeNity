@@ -15,26 +15,40 @@ func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any
 		}
 	}
 
-	keyLen := len(command.Key)
-	if len(command.RawKey) > 0 {
-		keyLen = len(command.RawKey)
+	// Get datas
+	Key := command.Key
+	Body := command.Body
+	RawKey := command.RawKey
+	RawBody := command.RawBody
+
+	// Cast message
+	if command.Raw {
+		Key = string(RawKey)
+		Body = string(RawBody)
+	} else {
+		RawKey = []byte(Key)
+		RawBody = []byte(Body)
 	}
-	bodyLen := len(command.Body)
-	if len(command.RawBody) > 0 {
-		bodyLen = len(command.RawBody)
-	}
-	if keyLen+bodyLen > pr.MaxMessageLength {
+
+	// Get message length
+	text_len := len(Key) + len(Body)
+	raw_len := len(RawKey) + len(RawBody)
+	length := max(text_len, raw_len)
+
+	// Check message length
+	if length > pr.MaxMessageLength {
 		return "", "", &pr.Error{
 			Message: pr.ErrMessageTooLong,
 			Code:    1,
 		}
 	}
 
+	// Add new message
 	topic.Topic.NewMsgChan <- pr.Message{
-		Key:     command.Key,
-		Body:    command.Body,
-		RawKey:  command.RawKey,
-		RawBody: command.RawBody,
+		Key:     Key,
+		Body:    Body,
+		RawKey:  RawKey,
+		RawBody: RawBody,
 	}
 
 	return "", "", nil
