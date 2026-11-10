@@ -59,9 +59,7 @@ func PrintData(dataMsg pr.CmdMessageDatas, cmd pr.CmdSubscribeDatas) *pr.Error {
 	return nil
 }
 
-func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
-	cmd := cmd_struct.(pr.CmdSubscribeDatas)
-
+func (c *Client) ExecSubscribe(cmd pr.CmdSubscribeDatas) *pr.Error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
@@ -78,7 +76,7 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 				return nil
 			}
 			if errors.Is(err, io.EOF) {
-				fmt.Println("Server closed the connection")
+				fmt.Fprintln(os.Stderr, "Server closed the connection")
 				return nil
 			}
 			return &pr.Error{
