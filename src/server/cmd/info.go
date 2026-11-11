@@ -21,7 +21,7 @@ func HandleCmdInfo(command pr.CmdInfoDatas, clients *h.Hashmap) (string, any, *p
 	// Handle invalid subscriber name
 	if err != nil {
 		return "", nil, &pr.Error{
-			Message: err.Error(),
+			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrSubscriberDoesNotExist),
 			Code:    2,
 		}
 	}
