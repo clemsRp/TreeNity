@@ -133,8 +133,6 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 				if !topic.SendToSubscriber(msg, client, clients) {
 					break
 				}
-			} else {
-				client.Offset = msg.Offset + 1
 			}
 		}
 	}

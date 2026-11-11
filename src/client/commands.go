@@ -20,7 +20,7 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	if err != nil {
 		return &pr.Error{
 			Message: err.Error(),
-			Code: 1,
+			Code:    1,
 		}
 	}
 
@@ -49,6 +49,8 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 
 	case pr.CmdSubscribe:
 		cmd_subs := cmd_struct.(pr.CmdSubscribeDatas)
+		c.Name = cmd_subs.SubscriberName
+
 		if cmd_subs.Offset != nil && *cmd_subs.Offset < 0 {
 			return &pr.Error{
 				Message: "offset cannot be a negative integer",

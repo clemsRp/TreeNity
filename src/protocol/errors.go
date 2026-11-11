@@ -21,6 +21,7 @@ const (
 
 	// Tree and Client Errors
 	ErrSubscriberAlreadyActive = "subscriber is already active"
+	ErrSubscriberDoesNotExist  = "subscriber does not exist"
 	ErrClientAlreadyInserted   = "client is already inserted inside the tree"
 	ErrClientNotInserted       = "client is not inserted inside the tree"
 )

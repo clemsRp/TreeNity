@@ -38,8 +38,6 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 							c.MsgChan <- m
 						}(client, &msgCopy)
 					}
-				} else {
-					client.Offset = msg.Offset + 1
 				}
 			}
 		}
@@ -102,7 +100,6 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 		return false
 	}
 
-	client.Offset = msg.Offset + 1
 	return true
 }
 
