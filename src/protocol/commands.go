@@ -1,13 +1,14 @@
 package protocol
 
 const (
-	CmdCreate    = "create"
-	CmdList      = "list"
-	CmdProduce   = "produce"
-	CmdSubscribe = "subscribe"
-	CmdInfo      = "info"
-	CmdMessage   = "message"
-	CmdAck       = "ack"
+	CmdCreate     = "create"
+	CmdList       = "list"
+	CmdProduce    = "produce"
+	CmdSubscribe  = "subscribe"
+	CmdInfo       = "info"
+	CmdMessage    = "message"
+	CmdAck        = "ack"
+	CmdDisconnect = "disconnect"
 )
 
 // Define Client parsing
@@ -24,7 +25,7 @@ var CLI struct {
 	IpcIdentifier IpcArgs `arg:""`
 }
 
-// Define command structures
+// Define client command structures
 type CmdCreateDatas struct {
 	IpcIdentifier string `kong:"-" json:"ipc_identifier"`
 	TopicName     string `arg:"" help:"Topic Name" json:"topic_name"`
@@ -54,6 +55,7 @@ type CmdInfoDatas struct {
 	SubscriberName string `arg:"" help:"Subscriber Name" json:"subscriber_name"`
 }
 
+// Define programm command structures
 type CmdMessageDatas struct {
 	TopicName string `json:"topic_name"`
 	Key       []byte `json:"key,omitempty"`
@@ -63,5 +65,9 @@ type CmdMessageDatas struct {
 
 type CmdAckDatas struct {
 	Offset         uint32 `json:"offset"`
+	SubscriberName string `json:"subscriber_name"`
+}
+
+type CmdDisconnectDatas struct {
 	SubscriberName string `json:"subscriber_name"`
 }

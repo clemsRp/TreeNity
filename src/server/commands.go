@@ -118,6 +118,21 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, *pr.Error) {
 
 		// Run handler
 		res, datas, err = cmd.HandleCmdAck(command_datas, s.Clients)
+
+	case pr.CmdDisconnect:
+		var command_datas pr.CmdDisconnectDatas
+
+		// Cast datas
+		json_err := json.Unmarshal(command.Datas, &command_datas)
+		if json_err != nil {
+			return "", "", &pr.Error{
+				Message: pr.ErrCast,
+				Code:    1,
+			}
+		}
+
+		// Run handler
+		res, datas, err = cmd.HandleCmdDisconnect(command_datas, s.Clients)
 	}
 
 	return res, datas, err

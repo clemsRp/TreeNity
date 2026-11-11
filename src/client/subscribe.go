@@ -99,7 +99,9 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			// Send disconnect command to server
+			cmd_disconnect := pr.CmdDisconnectDatas{SubscriberName: c.Name}
+			return c.Send(cmd_disconnect, pr.CmdDisconnect)
 
 		case <-ticker.C:
 			if ProcessExists(c.ServerPid) {
