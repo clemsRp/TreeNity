@@ -56,7 +56,10 @@ func (c *Client) SendRequest(cmd_struct any, command string) *pr.Error {
 	line, read_err := c.Reader.ReadLine()
 	if read_err != nil {
 		if read_err == io.EOF {
-			return nil
+			return &pr.Error{
+				Message: "server closed connection unexpectedly",
+				Code:    3,
+			}
 		}
 		return &pr.Error{
 			Message: read_err.Error(),

@@ -9,16 +9,16 @@ import (
 
 func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics, clients *h.Hashmap) (string, any, *pr.Error) {
 	// Handle invalid topic name
-	if _, ok := topics.Get(command.TopicName); ok {
-		return "", "", &pr.Error{
-			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicAlreadyExist),
-			Code:    2,
-		}
-
-	} else if !IsValidId(command.TopicName) {
+	if !IsValidId(command.TopicName) {
 		return "", "", &pr.Error{
 			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrInvalidName),
 			Code:    1,
+		}
+
+	} else if _, ok := topics.Get(command.TopicName); ok {
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicAlreadyExist),
+			Code:    2,
 		}
 	}
 

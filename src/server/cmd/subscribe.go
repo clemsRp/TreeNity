@@ -20,8 +20,20 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 		}
 	}
 
-	// Subscriber IPC channel
-	permanentIpcPath := ipcPath
+	// Check subscriber is valid name
+	if !IsValidId(command.SubscriberName) {
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrInvalidName),
+			Code:    1,
+		}
+	}
+	// Check topic is valid name
+	if !IsValidId(command.TopicName) {
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrInvalidName),
+			Code:    1,
+		}
+	}
 
 	// Check topic exist
 	_, exist := topics.Get(command.TopicName)
@@ -33,14 +45,6 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	}
 
 	client, err = clients.Get(command.SubscriberName)
-
-	// Check subscriber is valid name
-	if !IsValidId(command.SubscriberName) {
-		return "", "", &pr.Error{
-			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrInvalidName),
-			Code:    1,
-		}
-	}
 
 	// Check subscriber doesn't exist or is reconnecting
 	if err == nil {
@@ -54,7 +58,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Update client datas
 		client.IsActive = true
-		client.IpcPath = permanentIpcPath
+		client.IpcPath = ipcPath
 		if client.Writer != nil {
 			client.Writer.Close()
 			client.Writer = nil
@@ -66,11 +70,12 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 				old_topic.Tree.Remove(client)
 			}
 			client.Topic = command.TopicName
+			client.Offset = 0
 		}
 
 		// Update prefix if needed
+		client.PreviousPrefix = client.Prefix
 		if command.Prefix != nil {
-			client.PreviousPrefix = client.Prefix
 			client.Prefix = *command.Prefix
 		}
 
@@ -94,12 +99,13 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 		// Create subscriber
 		client = &pr.Client{
-			Id:       command.SubscriberName,
-			Topic:    command.TopicName,
-			Offset:   offset,
-			Prefix:   prefix,
-			IpcPath:  permanentIpcPath,
-			IsActive: true,
+			Id:             command.SubscriberName,
+			Topic:          command.TopicName,
+			Offset:         offset,
+			Prefix:         prefix,
+			PreviousPrefix: prefix,
+			IpcPath:        ipcPath,
+			IsActive:       true,
 		}
 
 		// Add client to Hashmap
@@ -137,14 +143,14 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 		}
 	}
 
+	// Add client to topic prefix tree
+	topic.Tree.Insert(client)
+
 	// Subscriber worker goroutine
 	if client.MsgChan == nil {
 		client.MsgChan = make(chan *pr.Message, 100)
 	}
 	go topic.StartSubscriberWorker(client, clients)
-
-	// Add client to topic prefix tree
-	topic.Tree.Insert(client)
 }
 
 // Backward compatibility

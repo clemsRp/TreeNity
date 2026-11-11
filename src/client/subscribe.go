@@ -74,12 +74,14 @@ func (c *Client) ReadData(lineChan chan []byte, errChan chan error) {
 }
 
 func ProcessExists(serverPid int64) bool {
+	// Handle invalid PID
+	if serverPid <= 0 {
+		return false
+	}
+
 	err := syscall.Kill(int(serverPid), 0)
 
-	if errors.Is(err, syscall.ESRCH) {
-		return true
-	}
-	return false
+	return !errors.Is(err, syscall.ESRCH)
 }
 
 func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
@@ -104,9 +106,11 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 			return c.Send(cmd_disconnect, pr.CmdDisconnect)
 
 		case <-ticker.C:
-			if ProcessExists(c.ServerPid) {
-				fmt.Fprintln(os.Stderr, "Server down")
-				return nil
+			if !ProcessExists(c.ServerPid) {
+				return &pr.Error{
+					Message: "server down",
+					Code:    3,
+				}
 			}
 
 		case err := <-errChan:
@@ -115,8 +119,10 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 					return nil
 				}
 				if errors.Is(err, io.EOF) {
-					fmt.Fprintln(os.Stderr, "Server closed the connection")
-					return nil
+					return &pr.Error{
+						Message: "server down",
+						Code:    3,
+					}
 				}
 				return &pr.Error{
 					Message: err.Error(),

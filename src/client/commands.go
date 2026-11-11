@@ -10,17 +10,22 @@ import (
 )
 
 func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
+	var err error
+
 	// Basics variables
 	i_struct := &pr.CLI.IpcIdentifier
 	ipcPath := i_struct.IpcIdentifier
 	command := ctx.Selected().Name
-	serverPid := strings.SplitN(ipcPath, pr.EntryPoint, 2)[1]
-	var err error
-	c.ServerPid, err = strconv.ParseInt(serverPid, 10, 64)
-	if err != nil {
-		return &pr.Error{
-			Message: err.Error(),
-			Code:    1,
+
+	// Get server PID
+	if strings.Contains(ipcPath, pr.EntryPoint) {
+		serverPid := strings.SplitN(ipcPath, pr.EntryPoint, 2)[1]
+		c.ServerPid, err = strconv.ParseInt(serverPid, 10, 64)
+		if err != nil {
+			return &pr.Error{
+				Message: err.Error(),
+				Code:    1,
+			}
 		}
 	}
 
