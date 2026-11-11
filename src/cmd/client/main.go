@@ -7,13 +7,17 @@ import (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+func run() int {
 	// Get args
 	argv := os.Args
 	argc := len(argv)
 
 	if argc < 3 {
 		fmt.Fprintln(os.Stderr, "Error: Invalid number of parameters")
-		os.Exit(1)
+		return 1
 	}
 
 	entrypoint := argv[1]
@@ -25,14 +29,14 @@ func main() {
 	ctx, kong_err := c.GetContext(os.Args[1:])
 	if kong_err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", kong_err.Error())
-		os.Exit(1)
+		return 1
 	}
 
 	// Connect to server
 	err := c.Connect(entrypoint)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err.Error())
-		os.Exit(1)
+		return 1
 	}
 	defer c.Disconnect()
 
@@ -40,6 +44,8 @@ func main() {
 	cmd_err := c.HandleCommand(ctx)
 	if cmd_err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", cmd_err.Message)
-		os.Exit(cmd_err.Code)
+		return cmd_err.Code
 	}
+
+	return 0
 }

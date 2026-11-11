@@ -7,6 +7,7 @@ const (
 	CmdSubscribe = "subscribe"
 	CmdInfo      = "info"
 	CmdMessage   = "message"
+	CmdAck       = "ack"
 )
 
 // Define Client parsing
@@ -58,4 +59,9 @@ type CmdMessageDatas struct {
 	Key       []byte `json:"key,omitempty"`
 	Body      []byte `json:"body,omitempty"`
 	Offset    uint32 `json:"offset"`
+}
+
+type CmdAckDatas struct {
+	Offset         uint32 `json:"offset"`
+	SubscriberName string `json:"subscriber_name"`
 }

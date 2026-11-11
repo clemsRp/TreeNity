@@ -7,7 +7,7 @@ import (
 	pr "treenity/src/protocol"
 )
 
-func (c *Client) SendRequest(cmd_struct any, command string) *pr.Error {
+func (c *Client) Send(cmd_struct any, command string) *pr.Error {
 	// Convert cmd_struct to Raw Message
 	rawDatas, marsh_err := json.Marshal(cmd_struct)
 	if marsh_err != nil {
@@ -40,6 +40,16 @@ func (c *Client) SendRequest(cmd_struct any, command string) *pr.Error {
 			Message: err.Error(),
 			Code:    3,
 		}
+	}
+
+	return nil
+}
+
+func (c *Client) SendRequest(cmd_struct any, command string) *pr.Error {
+	// Send request
+	send_err := c.Send(cmd_struct, command)
+	if send_err != nil {
+		return send_err
 	}
 
 	// Wait for response

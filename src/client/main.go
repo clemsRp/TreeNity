@@ -5,10 +5,11 @@ import (
 )
 
 type Client struct {
-	Path   string
-	Writer *ipc.Writer
-	Reader *ipc.Reader
+	Path      string
+	Writer    *ipc.Writer
+	Reader    *ipc.Reader
 	ServerPid int64
+	Name      string
 }
 
 func NewClient() *Client {

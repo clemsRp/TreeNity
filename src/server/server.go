@@ -35,13 +35,13 @@ func (s *Server) closeClient() {
 		for node := bucket; node != nil; node = node.Next {
 			client := node.Value
 			if !client.IsActive {
-				return
+				continue
 			}
 
 			if client.Writer == nil {
 				writer, err := ipc.NewWriter(client.IpcPath)
 				if err != nil {
-					return
+					continue
 				}
 				client.Writer = writer
 			}
@@ -97,16 +97,21 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 				var command pr.ToServer
 				json_err := json.Unmarshal([]byte(lineGet), &command)
 				if json_err != nil {
-					return json_err
+					continue
 				}
 
 				// Get request response
 				res, datas, err := s.HandleCommands(command)
 
+				if command.Command == pr.CmdAck {
+					continue
+				}
+
 				// Create Writer
 				writer, write_err := ipc.NewWriter(command.Path)
 				if write_err != nil {
-					return write_err
+					fmt.Fprintln(os.Stderr, "client gone:", write_err)
+					continue
 				}
 
 				// Send response to client

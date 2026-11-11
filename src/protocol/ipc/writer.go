@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"syscall"
 )
 
 type Writer struct {
@@ -14,7 +15,7 @@ type Writer struct {
 
 func NewWriter(path string) (*Writer, error) {
 	// Open file to write
-	file, err := os.OpenFile(path, os.O_WRONLY, 0600)
+	file, err := os.OpenFile(path, os.O_WRONLY|syscall.O_NONBLOCK, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open fifo %s for writing: %w", path, err)
 	}

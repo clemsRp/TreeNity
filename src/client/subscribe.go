@@ -134,10 +134,12 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 				}
 			}
 
+			// Handle server shutdown
 			if data_convert.Quit {
 				return nil
 			}
 
+			// Cast message
 			var dataMsg pr.CmdMessageDatas
 			msgError := json.Unmarshal(data_convert.Datas, &dataMsg)
 			if msgError != nil {
@@ -147,9 +149,22 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 				}
 			}
 
+			// Print message
 			print_err := PrintData(dataMsg, cmd)
 			if print_err != nil {
 				return print_err
+			}
+
+			// Define new offset
+			ack_struct := pr.CmdAckDatas{
+				Offset:         dataMsg.Offset + 1,
+				SubscriberName: c.Name,
+			}
+
+			// Send ACK
+			ack_err := c.Send(ack_struct, pr.CmdAck)
+			if ack_err != nil {
+				return ack_err
 			}
 		}
 	}
