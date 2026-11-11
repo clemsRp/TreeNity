@@ -19,6 +19,7 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
+		// Get key length
 		var keyLen int32
 		err := binary.Read(reader, binary.LittleEndian, &keyLen)
 		if err == io.EOF {
@@ -28,30 +29,41 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
 		}
 
+		// Handle invalid message length
+		if keyLen > pr.MaxMessageLength {
+			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+		}
+
+		// Get key content
 		keyBuf := make([]byte, keyLen)
 		if _, err := io.ReadFull(reader, keyBuf); err != nil {
 			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
 		}
 
+		// Get body length
 		var valLen int32
 		if err := binary.Read(reader, binary.LittleEndian, &valLen); err != nil || valLen < 0 {
 			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
 		}
 
+		// Handle invalid message length
+		if keyLen+valLen > pr.MaxMessageLength {
+			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+		}
+
+		// Get body content
 		valBuf := make([]byte, valLen)
 		if _, err := io.ReadFull(reader, valBuf); err != nil {
 			return &pr.Error{Message: pr.ErrPartialRecordEOF, Code: 1}
 		}
 
-		if int(keyLen)+int(valLen) > pr.MaxMessageLength {
-			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
-		}
-
+		// Format message
 		msgStruct := pr.CmdMessageDatas{
 			Key:       keyBuf,
 			Body:      valBuf,
 			TopicName: cmd.TopicName,
 		}
+
 		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
 		}
@@ -103,16 +115,16 @@ func (c *Client) CheckServerDown() {
 
 		for range ticker.C {
 			if _, err := os.Stat(c.Writer.Path); os.IsNotExist(err) {
-				fmt.Fprintln(os.Stderr, "Server down")
+				fmt.Fprintln(os.Stderr, "Error: server down")
 				c.Disconnect()
-				os.Exit(0)
+				os.Exit(3)
 			}
 
 			err := syscall.Kill(int(c.ServerPid), 0)
 			if errors.Is(err, syscall.ESRCH) {
-				fmt.Fprintln(os.Stderr, "Server down")
+				fmt.Fprintln(os.Stderr, "Error: server down")
 				c.Disconnect()
-				os.Exit(0)
+				os.Exit(3)
 			}
 		}
 	}()

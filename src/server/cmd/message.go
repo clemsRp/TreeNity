@@ -7,14 +7,6 @@ import (
 )
 
 func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any, *pr.Error) {
-	topic, exist := topics.Get(command.TopicName)
-	if !exist {
-		return "", "", &pr.Error{
-			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
-			Code:    2,
-		}
-	}
-
 	// Get message length
 	text_len := len(command.Key) + len(command.Body)
 
@@ -23,6 +15,23 @@ func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any
 		return "", "", &pr.Error{
 			Message: pr.ErrMessageTooLong,
 			Code:    1,
+		}
+	}
+
+	// Check topic is a valid name
+	if !IsValidId(command.TopicName) {
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrInvalidName),
+			Code:    1,
+		}
+	}
+
+	// Check topic exist
+	topic, exist := topics.Get(command.TopicName)
+	if !exist {
+		return "", "", &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
+			Code:    2,
 		}
 	}
 

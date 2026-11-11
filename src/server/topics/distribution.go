@@ -3,7 +3,6 @@ package topics
 import (
 	"encoding/json"
 	"os"
-	"strings"
 	"syscall"
 
 	pr "treenity/src/protocol"
@@ -26,18 +25,16 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 			}
 
 			if client.Offset <= msg.Offset {
-				if strings.HasPrefix(string(msg.Key), client.Prefix) {
-					if client.MsgChan == nil {
-						client.MsgChan = make(chan *pr.Message, 100)
-						go td.StartSubscriberWorker(client, clients)
-					}
-					select {
-					case client.MsgChan <- &msgCopy:
-					default:
-						go func(c *pr.Client, m *pr.Message) {
-							c.MsgChan <- m
-						}(client, &msgCopy)
-					}
+				if client.MsgChan == nil {
+					client.MsgChan = make(chan *pr.Message, 100)
+					go td.StartSubscriberWorker(client, clients)
+				}
+				select {
+				case client.MsgChan <- &msgCopy:
+				default:
+					go func(c *pr.Client, m *pr.Message) {
+						c.MsgChan <- m
+					}(client, &msgCopy)
 				}
 			}
 		}
