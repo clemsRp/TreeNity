@@ -65,3 +65,11 @@ type IdScenario struct {
 	Id      string
 	WantErr bool
 }
+
+type IpcScenario struct {
+	Name	string
+	Input	string
+	Want	string
+}
+
+

@@ -6,6 +6,7 @@ TESTS := $(TESTS_DIR)/parsing/... \
 		 $(TESTS_DIR)/hashmap/... \
 		 $(TESTS_DIR)/prefix/... \
 		 $(TESTS_DIR)/utils/... \
+		 $(TESTS_DIR)/ipc/... \
 
 # Rules
 all: server client
