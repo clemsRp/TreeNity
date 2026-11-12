@@ -59,3 +59,9 @@ type PrefixScenario struct {
 	Name  string
 	Steps []PrefixStep
 }
+
+type IdScenario struct {
+	Name    string
+	Id      string
+	WantErr bool
+}
