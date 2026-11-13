@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"os"
 	"regexp"
 	"syscall"
 	pr "treenity/src/protocol"
@@ -61,4 +62,13 @@ func SendResponse(writer *ipc.Writer, command pr.ToServer, res string, datas any
 	}
 
 	return nil
+}
+
+func clientAlive(path string) bool {
+	f, err := os.OpenFile(path, os.O_WRONLY|syscall.O_NONBLOCK, 0)
+	if err != nil {
+		return false
+	}
+	_ = f.Close()
+	return true
 }

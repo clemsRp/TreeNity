@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"strings"
+	"os"
 	pr "treenity/src/protocol"
 	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
@@ -50,10 +51,13 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	if err == nil {
 		// Check client is connected
 		if client.IsActive {
-			return "", "", &pr.Error{
-				Message: fmt.Sprintf("'%s' %s", client.Id, pr.ErrSubscriberAlreadyActive),
-				Code:    2,
+			if clientAlive(client.IpcPath) {
+				return "", "", &pr.Error{
+					Message: fmt.Sprintf("'%s' %s", client.Id, pr.ErrSubscriberAlreadyActive),
+					Code:    2,
+				}
 			}
+			os.Remove(client.IpcPath)
 		}
 
 		// Update client datas

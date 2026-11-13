@@ -52,9 +52,28 @@ format:
 
 lint:
 	@echo "Static check code..."
-	@PATH="$$PATH:$$(go env GOPATH)/bin" which staticcheck >/dev/null 2>&1 && PATH="$$PATH:$$(go env GOPATH)/bin" staticcheck ./... || true
+	@GOPATH_BIN="$$(go env GOPATH)/bin"; \
+	export PATH="$$PATH:$$GOPATH_BIN"; \
+	if ! command -v staticcheck >/dev/null 2>&1; then \
+		echo "Error: staticcheck is not installed."; \
+		exit 1; \
+	fi; \
+	staticcheck ./...
+	@echo "Dead code check..."
+	@GOPATH_BIN="$$(go env GOPATH)/bin"; \
+	export PATH="$$PATH:$$GOPATH_BIN"; \
+	if ! command -v deadcode >/dev/null 2>&1; then \
+		echo "Error: deadcode is not installed (run: go install golang.org/x/tools/cmd/deadcode@latest)"; \
+		exit 1; \
+	fi; \
+	DEAD_FUNCS=$$(deadcode ./...); \
+	if [ -n "$$DEAD_FUNCS" ]; then \
+		echo "Error: Unused functions detected:"; \
+		echo "$$DEAD_FUNCS"; \
+		exit 1; \
+	fi
 	@echo "Check lint..."
-	@test -z "$(gofmt -l src)" || (echo "Error: Incorrect lint !" && exit 1)
+	@test -z "$$(gofmt -l .)" || (echo "Error: Incorrect lint !" && exit 1)
 
 gitinette:
 	@./.github/workflows/gitinette

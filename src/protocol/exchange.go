@@ -14,5 +14,5 @@ type ToClient struct {
 	Err      *Error          `json:"error"`
 	Response string          `json:"response"`
 	Datas    json.RawMessage `json:"datas"`
-	Quit     bool			 `json:"quit"`
+	Quit     bool            `json:"quit"`
 }

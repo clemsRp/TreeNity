@@ -27,6 +27,11 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 				Code:    1,
 			}
 		}
+	} else {
+		return &pr.Error{
+			Message: pr.ErrInvalidIpcPath,
+			Code:    1,
+		}
 	}
 
 	cmd_struct, cmd_err := c.GetCmdStruct(i_struct, ipcPath, command)
