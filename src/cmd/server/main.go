@@ -23,4 +23,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: ", err.Error())
 		os.Exit(1)
 	}
+
+	// Clean FIFO paths
+	s.Clean()
 }

@@ -3,10 +3,12 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"slices"
 	"sync"
 	"syscall"
@@ -25,7 +27,7 @@ type Server struct {
 
 func NewServer() *Server {
 	return &Server{
-		Entrypoint: pr.EntryPoint,
+		Entrypoint: fmt.Sprintf("%s%d", pr.EntryPoint, os.Getpid()),
 		Topics:     t.NewTopics(),
 		Clients:    h.CreateHashmap(int(pr.ClientsHashmapSize)),
 	}
@@ -133,14 +135,11 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 }
 
 func (s *Server) Start() error {
-	// Get FIFO path
-	pid := os.Getpid()
-	path := fmt.Sprintf("%s%d", pr.EntryPoint, pid)
-
-	fmt.Println(path)
+	// Print FIFO path
+	fmt.Println(s.Entrypoint)
 
 	// Create Server Reader
-	reader, err := ipc.NewReader(path)
+	reader, err := ipc.NewReader(s.Entrypoint)
 	if err != nil {
 		return err
 	}
@@ -162,4 +161,25 @@ func (s *Server) Start() error {
 	wg.Wait()
 
 	return err
+}
+
+func (s *Server) Clean() {
+	// Get FIFO paths
+	fmt.Println(s.Entrypoint)
+	paths, err := filepath.Glob(s.Entrypoint + "*")
+	if err != nil {
+		return
+	}
+
+	// Delete FIFO paths
+	for _, p := range paths {
+		fmt.Println(p)
+		fi, err := os.Lstat(p)
+		if err != nil || fi.Mode()&os.ModeNamedPipe == 0 {
+			continue
+		}
+		if err := os.Remove(p); err != nil && !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(os.Stderr, "failed to remove %s: %v\n", p, err)
+		}
+	}
 }
