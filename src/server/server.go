@@ -80,7 +80,7 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Fprintln(os.Stderr, "Server shutingdown")
+				fmt.Fprintln(os.Stderr, "Server shutting down")
 				s.closeClient()
 				if reader != nil {
 					reader.Close()
@@ -165,7 +165,6 @@ func (s *Server) Start() error {
 
 func (s *Server) Clean() {
 	// Get FIFO paths
-	fmt.Println(s.Entrypoint)
 	paths, err := filepath.Glob(s.Entrypoint + "*")
 	if err != nil {
 		return
@@ -173,7 +172,6 @@ func (s *Server) Clean() {
 
 	// Delete FIFO paths
 	for _, p := range paths {
-		fmt.Println(p)
 		fi, err := os.Lstat(p)
 		if err != nil || fi.Mode()&os.ModeNamedPipe == 0 {
 			continue

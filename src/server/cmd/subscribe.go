@@ -93,7 +93,11 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 	if client.MsgChan == nil {
 		client.MsgChan = make(chan *pr.Message, 100)
 	}
-	go topic.StartSubscriberWorker(client, clients)
+
+	if !client.IsWorking {
+		client.IsWorking = true
+		go topic.StartSubscriberWorker(client, clients)
+	}
 }
 
 // Backward compatibility
