@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"os"
-	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
 )
 
@@ -18,7 +17,7 @@ func (c *Client) Connect(path string) error {
 
 	// Get client PID
 	pid := os.Getpid()
-	c.Path = fmt.Sprintf("%s%d", pr.EntryPoint, pid)
+	c.Path = fmt.Sprintf("%s.%d", path, pid)
 
 	// Create Reader
 	reader, err := ipc.NewReader(c.Path)

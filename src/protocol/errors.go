@@ -4,6 +4,7 @@ const (
 	// General Errors
 	ErrCast           = "cast error"
 	ErrInvalidCommand = "invalid command. Need to be: create, list, produce, subscribe or info"
+	ErrInvalidIpcPath = "invalid IPC path, need to have '" + EntryPoint + "' prefix"
 
 	// EOF Errors
 	ErrEOF              = "EOF detected"
