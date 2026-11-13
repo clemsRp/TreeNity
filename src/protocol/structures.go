@@ -21,7 +21,7 @@ type Client struct {
 	Prefix         string        `json:"prefix"`
 	PreviousPrefix string        `json:"-"`
 	IpcPath        string        `json:"ipc"`
-	Writer         *ipc.Writer   `json:"-"`
 	IsActive       bool          `json:"-"`
+	Writer         *ipc.Writer   `json:"-"`
 	MsgChan        chan *Message `json:"-"`
 }

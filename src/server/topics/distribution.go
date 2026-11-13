@@ -2,8 +2,6 @@ package topics
 
 import (
 	"encoding/json"
-	"os"
-	"syscall"
 
 	pr "treenity/src/protocol"
 	h "treenity/src/server/hashmap"
@@ -54,14 +52,7 @@ func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashma
 }
 
 func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clients *h.Hashmap) bool {
-	var pipe *os.File
 	var err error
-
-	pipe, err = os.OpenFile(client.IpcPath, os.O_WRONLY|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		disconnectSubscriber(client.Id, client, clients)
-		return false
-	}
 
 	msgData := pr.CmdMessageDatas{
 		Key:       msg.Key,
@@ -74,7 +65,6 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 
 	payload, err = json.Marshal(msgData)
 	if err != nil {
-		_ = pipe.Close()
 		return false
 	}
 
@@ -84,13 +74,10 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 
 	payload, err = json.Marshal(SendClient)
 	if err != nil {
-		_ = pipe.Close()
 		return false
 	}
-	payload = append(payload, '\n')
 
-	_, writeErr := pipe.Write(payload)
-	_ = pipe.Close()
+	writeErr := client.Writer.WriteLine(payload)
 
 	if writeErr != nil {
 		disconnectSubscriber(client.Id, client, clients)

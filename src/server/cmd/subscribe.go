@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 	"os"
+	"strings"
 	pr "treenity/src/protocol"
+	"treenity/src/protocol/ipc"
 	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
 )
@@ -13,36 +14,9 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	var client *pr.Client
 	var err error
 
-	// Check response channel
-	if ipcPath == "" {
-		return "", "", &pr.Error{
-			Message: "missing client IPC path",
-			Code:    1,
-		}
-	}
-
-	// Check subscriber is valid name
-	if !IsValidId(command.SubscriberName) {
-		return "", "", &pr.Error{
-			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrInvalidName),
-			Code:    1,
-		}
-	}
-	// Check topic is valid name
-	if !IsValidId(command.TopicName) {
-		return "", "", &pr.Error{
-			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrInvalidName),
-			Code:    1,
-		}
-	}
-
-	// Check topic exist
-	_, exist := topics.Get(command.TopicName)
-	if !exist {
-		return "", "", &pr.Error{
-			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
-			Code:    2,
-		}
+	sub_err := CheckSubscribeCmd(command, topics, ipcPath)
+	if sub_err != nil {
+		return "", "", sub_err
 	}
 
 	client, err = clients.Get(command.SubscriberName)
@@ -60,60 +34,25 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			os.Remove(client.IpcPath)
 		}
 
-		// Update client datas
-		client.IsActive = true
-		client.IpcPath = ipcPath
-		if client.Writer != nil {
-			client.Writer.Close()
-			client.Writer = nil
-		}
+		client.Writer.Close()
 
-		// Remove client from previous topic tree if needed
-		if client.Topic != command.TopicName {
-			if old_topic, exist := topics.Get(client.Topic); exist {
-				old_topic.Tree.Remove(client)
+		// Init client Writer
+		writer, wri_err := ipc.NewWriter(ipcPath)
+		if wri_err != nil {
+			return "", "", &pr.Error{
+				Message: wri_err.Error(),
+				Code:    3,
 			}
-			client.Topic = command.TopicName
-			client.Offset = 0
 		}
+		client.Writer = writer
 
-		// Update prefix if needed
-		client.PreviousPrefix = client.Prefix
-		if command.Prefix != nil {
-			client.Prefix = *command.Prefix
-		}
-
-		// Update offset if needed
-		if command.Offset != nil {
-			client.Offset = uint32(*command.Offset)
-		}
+		ReconnectSubscriber(command, topics, client, ipcPath)
 
 	} else {
-		// Handle missing offset option
-		offset := uint32(0)
-		if command.Offset != nil {
-			offset = uint32(*command.Offset)
+		err := AddNewSubscriber(command, clients, ipcPath)
+		if err != nil {
+			return "", "", err
 		}
-
-		// Handle missing prefix option
-		prefix := ""
-		if command.Prefix != nil {
-			prefix = *command.Prefix
-		}
-
-		// Create subscriber
-		client = &pr.Client{
-			Id:             command.SubscriberName,
-			Topic:          command.TopicName,
-			Offset:         offset,
-			Prefix:         prefix,
-			PreviousPrefix: prefix,
-			IpcPath:        ipcPath,
-			IsActive:       true,
-		}
-
-		// Add client to Hashmap
-		clients.Append(command.SubscriberName, client)
 	}
 
 	return "subscribed to " + command.TopicName, "", nil

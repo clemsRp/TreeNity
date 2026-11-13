@@ -54,7 +54,7 @@ func (s *Server) closeClient() {
 
 			client.Writer.WriteLine(payload)
 
-			_ = client.Writer.Close()
+			client.Writer.Close()
 			client.IsActive = false
 		}
 	}
