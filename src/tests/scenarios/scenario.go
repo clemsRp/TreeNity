@@ -59,3 +59,25 @@ type PrefixScenario struct {
 	Name  string
 	Steps []PrefixStep
 }
+
+// IPC scenarios
+type IpcAction string
+
+const (
+	IpcActionCreateReader IpcAction = "create_reader"
+	IpcActionCreateWriter IpcAction = "create_writer"
+	IpcActionRead         IpcAction = "read"
+	IpcActionWrite        IpcAction = "write"
+)
+
+type IpcStep struct {
+	Action  IpcAction
+	Pid     int
+	Text    string
+	WantErr bool
+}
+
+type IpcScenario struct {
+	Name  string
+	Steps []IpcStep
+}
