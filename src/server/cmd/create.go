@@ -29,13 +29,3 @@ func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics, clients *h.Has
 
 	return "topic created", "", nil
 }
-
-// Backward compatibility
-func DistributeMessages(topic *t.TopicDatas, clients *h.Hashmap) {
-	topic.DistributeMessages(clients)
-}
-
-// Backward compatibility
-func AcceptNewMessages(topic *t.TopicDatas, clients *h.Hashmap) {
-	topic.DistributeMessages(clients)
-}

@@ -18,6 +18,7 @@ func (t *Topics) Create(topic_name string) *TopicDatas {
 			NewMsgChan: make(chan pr.Message),
 		},
 		Tree: p.CreateTree(0),
+		Done: make(chan struct{}),
 	}
 
 	// Add topic to topic list
@@ -46,4 +47,17 @@ func (t *Topics) GetTopicNames() []string {
 	topics := t.TopicsList
 
 	return topics
+}
+
+func (t *Topics) StopAll() {
+	t.mu.RLock()
+	all := make([]*TopicDatas, 0, len(t.AllTopics))
+	for _, td := range t.AllTopics {
+		all = append(all, td)
+	}
+	t.mu.RUnlock()
+
+	for _, td := range all {
+		td.Stop()
+	}
 }

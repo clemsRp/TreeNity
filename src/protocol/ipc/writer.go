@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type Writer struct {
@@ -36,6 +37,25 @@ func (w *Writer) WriteLine(payload []byte) error {
 	if len(data) == 0 || data[len(data)-1] != '\n' {
 		data = append(append([]byte(nil), data...), '\n')
 	}
+
+	_, err := w.File.Write(data)
+	return err
+}
+
+func (w *Writer) WriteLineTimeout(payload []byte, d time.Duration) error {
+	// Handle Thread safety
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	// Check line is terminated by a \n
+	data := payload
+	if len(data) == 0 || data[len(data)-1] != '\n' {
+		data = append(append([]byte(nil), data...), '\n')
+	}
+
+	// Handle Server timeout
+	w.File.SetWriteDeadline(time.Now().Add(d))
+	defer w.File.SetWriteDeadline(time.Time{})
 
 	_, err := w.File.Write(data)
 	return err

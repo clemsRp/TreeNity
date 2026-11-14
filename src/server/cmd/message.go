@@ -36,9 +36,10 @@ func HandleCmdMessage(command pr.CmdMessageDatas, topics *t.Topics) (string, any
 	}
 
 	// Add new message
-	topic.Topic.NewMsgChan <- pr.Message{
-		Key:  command.Key,
-		Body: command.Body,
+	select {
+	case topic.Topic.NewMsgChan <- pr.Message{Key: command.Key, Body: command.Body}:
+	case <-topic.Done:
+		return "", "", &pr.Error{Message: "server shutting down", Code: 3}
 	}
 
 	return "", "", nil

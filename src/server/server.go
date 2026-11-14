@@ -33,33 +33,6 @@ func NewServer() *Server {
 	}
 }
 
-func (s *Server) closeClient() {
-	for _, bucket := range s.Clients.Nodes {
-		for node := bucket; node != nil; node = node.Next {
-			client := node.Value
-			if !client.IsActive {
-				continue
-			}
-
-			if client.Writer == nil {
-				writer, err := ipc.NewWriter(client.IpcPath)
-				if err != nil {
-					continue
-				}
-				client.Writer = writer
-			}
-
-			SetQuit := pr.ToClient{Quit: true}
-			payload, _ := json.Marshal(SetQuit)
-
-			client.Writer.WriteLine(payload)
-
-			client.Writer.Close()
-			client.IsActive = false
-		}
-	}
-}
-
 func ReadChannel(reader *ipc.Reader, lineChan chan string, errorChan chan error) {
 	go func() {
 		for {
@@ -80,8 +53,7 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 		for {
 			select {
 			case <-ctx.Done():
-				fmt.Fprintln(os.Stderr, "Server shutting down")
-				s.closeClient()
+				s.gracefulShutdown(lineChan, errorChan)
 				if reader != nil {
 					reader.Close()
 				}
@@ -135,15 +107,15 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 }
 
 func (s *Server) Start() error {
-	// Print FIFO path
-	fmt.Println(s.Entrypoint)
-
 	// Create Server Reader
 	reader, err := ipc.NewReader(s.Entrypoint)
 	if err != nil {
 		return err
 	}
 	defer reader.Close()
+
+	// Print FIFO path
+	fmt.Println(s.Entrypoint)
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
@@ -165,7 +137,7 @@ func (s *Server) Start() error {
 
 func (s *Server) Clean() {
 	// Get FIFO paths
-	paths, err := filepath.Glob(s.Entrypoint + "*")
+	paths, err := filepath.Glob(s.Entrypoint + ".*")
 	if err != nil {
 		return
 	}

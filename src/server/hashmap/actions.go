@@ -2,7 +2,6 @@ package hashmap
 
 import (
 	"fmt"
-	"os"
 	pr "treenity/src/protocol"
 )
 
@@ -91,16 +90,17 @@ func (h *Hashmap) Contains(key string) bool {
 	return h.Nodes[hash].Contains(key)
 }
 
-func (h *Hashmap) Print() {
-	fmt.Fprintf(os.Stderr, "\n\nSize: %d\n", h.Size)
-	fmt.Fprintf(os.Stderr, "Length: %d\n", h.Length)
+func (h *Hashmap) Snapshot() []*pr.Client {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 
-	for deep := range h.Size {
-		fmt.Fprintf(os.Stderr, "\nCouche num %d\n", deep)
-		curr := h.Nodes[deep]
-		for curr != nil {
-			fmt.Fprintf(os.Stderr, "Key: %s, Value: %v\n", curr.Key, curr.Value)
-			curr = curr.Next
+	out := make([]*pr.Client, 0, h.Length)
+	for _, bucket := range h.Nodes {
+		for n := bucket; n != nil; n = n.Next {
+			if n.Value != nil {
+				out = append(out, n.Value)
+			}
 		}
 	}
+	return out
 }
