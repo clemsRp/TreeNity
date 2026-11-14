@@ -2,9 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"regexp"
 	"syscall"
@@ -17,15 +15,6 @@ var CheckIdRegex = regexp.MustCompile(pr.ValidRegex)
 
 func IsValidId(id string) bool {
 	return CheckIdRegex.MatchString(id)
-}
-
-func IsBrokenPipe(err error) bool {
-	if err == nil {
-		return false
-	}
-	return errors.Is(err, syscall.EPIPE) ||
-		errors.Is(err, syscall.ECONNRESET) ||
-		errors.Is(err, io.ErrClosedPipe)
 }
 
 func SendResponse(writer *ipc.Writer, command pr.ToServer, res string, datas any, server_err *pr.Error) *pr.Error {

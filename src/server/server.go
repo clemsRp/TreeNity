@@ -78,7 +78,7 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 				// Get request response
 				res, datas, err := s.HandleCommands(command)
 
-				no_response_cmds := []string{pr.CmdAck, pr.CmdDisconnect}
+				no_response_cmds := []string{pr.CmdMessage, pr.CmdAck, pr.CmdDisconnect}
 				if slices.Contains(no_response_cmds, command.Command) {
 					continue
 				}

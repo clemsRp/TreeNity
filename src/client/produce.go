@@ -64,7 +64,7 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 			TopicName: cmd.TopicName,
 		}
 
-		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+		if sendErr := c.Send(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
 		}
 	}
@@ -90,7 +90,7 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 			Body:      []byte(body),
 			TopicName: cmd.TopicName,
 		}
-		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+		if sendErr := c.Send(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
 		}
 	}

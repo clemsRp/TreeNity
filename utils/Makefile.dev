@@ -6,6 +6,9 @@ TESTS := $(TESTS_DIR)/parsing/... \
 		 $(TESTS_DIR)/hashmap/... \
 		 $(TESTS_DIR)/prefix/...
 
+FISH := .github/workflows/fish
+AQUARIUM := .github/workflows/aquarium
+
 # Rules
 all: server client
 	@echo "Build completed"
@@ -33,10 +36,27 @@ test-race:
 	@echo "Running race tests..."
 	@go test -race $(TESTS) -count=1
 
+test-bubble: all
+	@if [ -f $(FISH) ]; then \
+		./server > ipc_path.tmp & \
+		sleep 1; \
+		SERVER_IPC=$$(cat ipc_path.tmp); \
+		./client $$SERVER_IPC create test_topic; \
+		for i in $$(seq 1 40); do \
+			./$(FISH) ./client $$SERVER_IPC test_topic & \
+		done; \
+		./$(AQUARIUM) ./client $$SERVER_IPC test_topic test_client; \
+		rm -f ipc_path.tmp; \
+		pkill fish; \
+	else \
+		echo "No subject attachments found, please download them first."; \
+	fi
+
 test-strict:
 	@echo "Test eveything..."
 	@$(MAKE) test
 	@$(MAKE) test-race
+	@$(MAKE) test-bubble
 	@echo "All tests passed successfully...."
 
 # Manage project
@@ -66,7 +86,7 @@ lint:
 		echo "Error: deadcode is not installed (run: go install golang.org/x/tools/cmd/deadcode@latest)"; \
 		exit 1; \
 	fi; \
-	DEAD_FUNCS=$$(deadcode ./...); \
+	DEAD_FUNCS=$$(deadcode -test ./...); \
 	if [ -n "$$DEAD_FUNCS" ]; then \
 		echo "Error: Unused functions detected:"; \
 		echo "$$DEAD_FUNCS"; \

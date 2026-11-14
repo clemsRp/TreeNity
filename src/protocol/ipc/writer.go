@@ -62,5 +62,9 @@ func (w *Writer) WriteLineTimeout(payload []byte, d time.Duration) error {
 }
 
 func (w *Writer) Close() error {
+	if w.File == nil {
+		return nil
+	}
+
 	return w.File.Close()
 }
