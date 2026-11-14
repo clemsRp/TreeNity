@@ -1,6 +1,7 @@
 package ipc
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -28,6 +29,11 @@ func NewWriter(path string) (*Writer, error) {
 }
 
 func (w *Writer) WriteLine(payload []byte) error {
+	// Handle nil pointers
+	if w == nil {
+		return errors.New("cannot write on nil pointer")
+	}
+
 	// Handle Thread safety
 	w.mu.Lock()
 	defer w.mu.Unlock()

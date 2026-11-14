@@ -18,8 +18,10 @@ func (t *Tree) Insert(client *pr.Client) error {
 	}
 
 	// Handle update
-	if client.PreviousPrefix != client.Prefix {
+	if slices.Contains(t.AllClients, client) {
 		t.RemoveClient(client, []rune(client.PreviousPrefix))
+	} else {
+		t.AllClients = append(t.AllClients, client)
 	}
 
 	return t.InsertClient(client, []rune(client.Prefix))
@@ -106,22 +108,22 @@ func (t *Tree) Filter(key string) []*pr.Client {
 	return t.FilterClient([]rune(key))
 }
 
-// func (t *Tree) GetAllClients() []*pr.Client {
-// 	t.mu.RLock()
-// 	defer t.mu.RUnlock()
+func (t *Tree) GetAllClients() []*pr.Client {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
-// 	return t.collectAllClients()
-// }
+	return t.collectAllClients()
+}
 
-// func (t *Tree) collectAllClients() []*pr.Client {
-// 	result := make([]*pr.Client, len(t.Clients))
-// 	copy(result, t.Clients)
+func (t *Tree) collectAllClients() []*pr.Client {
+	result := make([]*pr.Client, len(t.Clients))
+	copy(result, t.Clients)
 
-// 	for _, child := range t.Children {
-// 		result = append(result, child.collectAllClients()...)
-// 	}
-// 	return result
-// }
+	for _, child := range t.Children {
+		result = append(result, child.collectAllClients()...)
+	}
+	return result
+}
 
 func (t *Tree) FilterClient(key []rune) []*pr.Client {
 	// Get root clients

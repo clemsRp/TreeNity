@@ -2,6 +2,7 @@ package ipc
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 
@@ -35,6 +36,11 @@ func NewReader(path string) (*Reader, error) {
 }
 
 func (r *Reader) ReadLine() ([]byte, error) {
+	// Handle nil pointers
+	if r == nil {
+		return []byte(""), errors.New("cannot write on nil pointer")
+	}
+
 	// Get all the bytes before the first \n
 	line, err := r.Reader.ReadBytes('\n')
 	if err != nil {
