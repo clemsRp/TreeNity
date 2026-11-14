@@ -1,5 +1,7 @@
 package protocol
 
+import "time"
+
 const (
 	EntryPoint = "/tmp/operator.server."
 
@@ -11,4 +13,6 @@ const (
 	MaxMessageLength   = 1024
 
 	ValidRegex = `^[a-zA-Z0-9_.-]{1,32}$`
+
+	ShutdownTimeout = 5 * time.Second
 )

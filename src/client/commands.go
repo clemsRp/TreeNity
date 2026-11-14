@@ -55,7 +55,7 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 	switch command {
 	case pr.CmdProduce:
 		cmd_product := cmd_struct.(pr.CmdProduceDatas)
-		return c.Run(cmd_product)
+		return c.ExecProduce(cmd_product)
 
 	case pr.CmdSubscribe:
 		cmd_subs := cmd_struct.(pr.CmdSubscribeDatas)

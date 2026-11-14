@@ -99,8 +99,3 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 		go topic.StartSubscriberWorker(client, clients)
 	}
 }
-
-// Backward compatibility
-func ReplayAndInsertSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
-	ReplayAndInsert(command, topics, clients)
-}

@@ -7,46 +7,56 @@ import (
 	h "treenity/src/server/hashmap"
 )
 
-func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
-	for msg := range td.Topic.NewMsgChan {
+func (td *TopicDatas) dispatch(msg pr.Message, clients *h.Hashmap) {
+	td.Mu.Lock()
+	msg.Offset = uint32(len(td.Topic.Messages))
+	msgCopy := msg
+	td.Topic.Messages = append(td.Topic.Messages, &msgCopy)
 
-		td.Mu.Lock()
-		msg.Offset = uint32(len(td.Topic.Messages))
-		msgCopy := msg
-		td.Topic.Messages = append(td.Topic.Messages, &msgCopy)
+	subscribers := td.Tree.Filter(string(msg.Key))
 
-		subscribers := td.Tree.Filter(string(msg.Key))
+	for _, client := range subscribers {
+		if !client.IsActive {
+			continue
+		}
 
-		for _, client := range subscribers {
-			if !client.IsActive {
-				continue
+		if client.Offset <= msg.Offset {
+			if client.MsgChan == nil {
+				client.MsgChan = make(chan *pr.Message, 100)
+				go td.StartSubscriberWorker(client, clients)
 			}
-
-			if client.Offset <= msg.Offset {
-				if client.MsgChan == nil {
-					client.MsgChan = make(chan *pr.Message, 100)
-					go td.StartSubscriberWorker(client, clients)
-				}
-				select {
-				case client.MsgChan <- &msgCopy:
-				default:
-					go func(c *pr.Client, m *pr.Message) {
-						c.MsgChan <- m
-					}(client, &msgCopy)
-				}
+			select {
+			case client.MsgChan <- &msgCopy:
+			default:
+				go func(c *pr.Client, m *pr.Message) {
+					c.MsgChan <- m
+				}(client, &msgCopy)
 			}
 		}
-		td.Mu.Unlock()
+	}
+	td.Mu.Unlock()
+}
+
+func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
+	for {
+		select {
+		case <-td.Done:
+			return
+		case msg := <-td.Topic.NewMsgChan:
+			td.dispatch(msg, clients)
+		}
 	}
 }
 
 func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashmap) {
-	for msg := range client.MsgChan {
-		if !client.IsActive {
-			break
-		}
-		if !td.SendToSubscriber(msg, client, clients) {
-			break
+	for {
+		select {
+		case <-td.Done:
+			return
+		case msg := <-client.MsgChan:
+			if !client.IsActive || !td.SendToSubscriber(msg, client, clients) {
+				return
+			}
 		}
 	}
 }

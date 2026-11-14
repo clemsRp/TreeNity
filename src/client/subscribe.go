@@ -101,16 +101,28 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 	for {
 		select {
 		case <-ctx.Done():
-			// Send disconnect command to server
-			cmd_disconnect := pr.CmdDisconnectDatas{SubscriberName: c.Name}
-			return c.Send(cmd_disconnect, pr.CmdDisconnect)
+			done := make(chan struct{})
+			go func() {
+				c.Send(pr.CmdDisconnectDatas{SubscriberName: c.Name}, pr.CmdDisconnect)
+				close(done)
+			}()
+			select {
+			case <-done:
+			case <-time.After(pr.ShutdownTimeout):
+			}
+			return nil
 
 		case <-ticker.C:
 			if !ProcessExists(c.ServerPid) {
-				return &pr.Error{
-					Message: "server down",
-					Code:    3,
+				select {
+				case data := <-lineChan:
+					var m pr.ToClient
+					if json.Unmarshal(data, &m) == nil && m.Quit {
+						return nil
+					}
+				default:
 				}
+				return &pr.Error{Message: "server down", Code: 3}
 			}
 
 		case err := <-errChan:
@@ -144,6 +156,7 @@ func (c *Client) ExecSubscribe(cmd_struct any) *pr.Error {
 
 			// Handle server shutdown
 			if data_convert.Quit {
+				c.Send(pr.CmdDisconnectDatas{SubscriberName: c.Name}, pr.CmdDisconnect)
 				return nil
 			}
 

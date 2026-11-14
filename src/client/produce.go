@@ -64,7 +64,7 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 			TopicName: cmd.TopicName,
 		}
 
-		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+		if sendErr := c.Send(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
 		}
 	}
@@ -90,7 +90,7 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 			Body:      []byte(body),
 			TopicName: cmd.TopicName,
 		}
-		if sendErr := c.SendRequest(msgStruct, pr.CmdMessage); sendErr != nil {
+		if sendErr := c.Send(msgStruct, pr.CmdMessage); sendErr != nil {
 			return sendErr
 		}
 	}
@@ -130,7 +130,7 @@ func (c *Client) CheckServerDown() {
 	}()
 }
 
-func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
+func (c *Client) ExecProduce(cmd pr.CmdProduceDatas) *pr.Error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
@@ -142,20 +142,4 @@ func (c *Client) Run(cmd pr.CmdProduceDatas) *pr.Error {
 	} else {
 		return c.TextMode(cmd)
 	}
-}
-
-// Backward compatibility
-func (c *Client) ExecProduceText(topic_name string) *pr.Error {
-	return c.Run(pr.CmdProduceDatas{
-		TopicName: topic_name,
-		Raw:       false,
-	})
-}
-
-// Backward compatibility
-func (c *Client) ExecProduceRaw(topic_name string) *pr.Error {
-	return c.Run(pr.CmdProduceDatas{
-		TopicName: topic_name,
-		Raw:       true,
-	})
 }
