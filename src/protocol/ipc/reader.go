@@ -56,11 +56,18 @@ func (r *Reader) ReadLine() ([]byte, error) {
 }
 
 func (r *Reader) Close() error {
-	if r.File == nil {
+	if r == nil || r.File == nil {
 		return nil
 	}
 
 	// Close and Remove FIFO
-	r.File.Close()
-	return os.Remove(r.Path)
+	close_err := r.File.Close()
+	r.File = nil
+
+	// Remove FIFO
+	if err := os.Remove(r.Path); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+
+	return close_err
 }
