@@ -21,6 +21,12 @@ func TestBasic(t *testing.T) {
 			for _, step := range tt.Steps {
 				UtilTestAction(t, ipcMap, step)
 			}
+
+			// Clean FIFO paths
+			for _, worker := range ipcMap {
+				worker.Reader.Close()
+				worker.Writer.Close()
+			}
 		})
 	}
 }
