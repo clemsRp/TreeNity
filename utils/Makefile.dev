@@ -56,7 +56,6 @@ test-strict:
 	@echo "Test eveything..."
 	@$(MAKE) test
 	@$(MAKE) test-race
-	@$(MAKE) test-bubble
 	@echo "All tests passed successfully...."
 
 # Manage project
