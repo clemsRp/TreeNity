@@ -7,34 +7,37 @@ import (
 	h "treenity/src/server/hashmap"
 )
 
-func (td *TopicDatas) dispatch(msg pr.Message, clients *h.Hashmap) {
+func (td *TopicDatas) dispatch(msg pr.Message) {
+	type target struct {
+		ch   chan *pr.Message
+		done chan struct{}
+	}
+
 	td.Mu.Lock()
 	msg.Offset = uint32(len(td.Topic.Messages))
 	msgCopy := msg
 	td.Topic.Messages = append(td.Topic.Messages, &msgCopy)
 
+	var targets []target
 	subscribers := td.Tree.Filter(string(msg.Key))
 
+	// Get message targets
 	for _, client := range subscribers {
-		if !client.IsActive {
-			continue
-		}
-
-		if client.Offset <= msg.Offset {
-			if client.MsgChan == nil {
-				client.MsgChan = make(chan *pr.Message, 100)
-				go td.StartSubscriberWorker(client, clients)
-			}
-			select {
-			case client.MsgChan <- &msgCopy:
-			default:
-				go func(c *pr.Client, m *pr.Message) {
-					c.MsgChan <- m
-				}(client, &msgCopy)
-			}
+		if client.IsActive.Load() && client.Offset.Load() <= msg.Offset && client.MsgChan != nil {
+			targets = append(targets, target{client.MsgChan, client.Done})
 		}
 	}
 	td.Mu.Unlock()
+
+	// Conserv message order
+	for _, t := range targets {
+		select {
+		case t.ch <- &msgCopy: // Send message
+		case <-t.done: // Wroker dead, continue to next subscriber
+		case <-td.Done: // Server shutdown
+			return
+		}
+	}
 }
 
 func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
@@ -43,18 +46,26 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 		case <-td.Done:
 			return
 		case msg := <-td.Topic.NewMsgChan:
-			td.dispatch(msg, clients)
+			td.dispatch(msg)
 		}
 	}
 }
 
-func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashmap) {
+func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashmap, ch <-chan *pr.Message, done chan struct{}) {
+	// Deactive worker
+	defer func() {
+		close(done)
+		td.Mu.Lock()
+		client.IsWorking = false
+		td.Mu.Unlock()
+	}()
+
 	for {
 		select {
 		case <-td.Done:
 			return
-		case msg := <-client.MsgChan:
-			if !client.IsActive || !td.SendToSubscriber(msg, client, clients) {
+		case msg := <-ch:
+			if !client.IsActive.Load() || !td.SendToSubscriber(msg, client, clients) {
 				return
 			}
 		}
@@ -98,12 +109,13 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 }
 
 func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap) {
+
 	if client != nil {
 		if client.Writer != nil {
 			_ = client.Writer.Close()
 			client.Writer = nil
 		}
-		client.IsActive = false
+		client.IsActive.Store(false)
 	}
 
 	if clients != nil {
@@ -112,7 +124,7 @@ func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap
 				_ = c.Writer.Close()
 				c.Writer = nil
 			}
-			c.IsActive = false
+			c.IsActive.Store(false)
 		}
 	}
 }

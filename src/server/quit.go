@@ -14,12 +14,12 @@ func (s *Server) notifyQuit() {
 	quit, _ := json.Marshal(pr.ToClient{Quit: true})
 
 	for _, c := range s.Clients.Snapshot() {
-		if !c.IsActive || c.Writer == nil {
+		if !c.IsActive.Load() || c.Writer == nil {
 			continue
 		}
 		go func(c *pr.Client) {
 			if err := c.Writer.WriteLineTimeout(quit, pr.ShutdownTimeout); err != nil {
-				c.IsActive = false
+				c.IsActive.Store(false)
 			}
 		}(c)
 	}
@@ -28,7 +28,7 @@ func (s *Server) notifyQuit() {
 func (s *Server) activeCount() int {
 	n := 0
 	for _, c := range s.Clients.Snapshot() {
-		if c.IsActive {
+		if c.IsActive.Load() {
 			n++
 		}
 	}

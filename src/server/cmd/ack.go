@@ -17,7 +17,9 @@ func HandleCmdAck(command pr.CmdAckDatas, clients *h.Hashmap) (string, any, *pr.
 	}
 
 	// Update client Offset
-	client.Offset = command.Offset
+	if command.Offset > client.Offset.Load() {
+		client.Offset.Store(command.Offset)
+	}
 
 	return "", "", nil
 }

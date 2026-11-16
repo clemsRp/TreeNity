@@ -24,7 +24,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	// Check subscriber doesn't exist or is reconnecting
 	if err == nil {
 		// Check client is connected
-		if client.IsActive {
+		if client.IsActive.Load() {
 			if clientAlive(client.IpcPath) {
 				return "", "", &pr.Error{
 					Message: fmt.Sprintf("'%s' %s", client.Id, pr.ErrSubscriberAlreadyActive),
@@ -74,10 +74,10 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 	defer topic.Mu.Unlock()
 
 	for _, msg := range topic.Topic.Messages {
-		if !client.IsActive {
+		if !client.IsActive.Load() {
 			break
 		}
-		if client.Offset <= msg.Offset {
+		if client.Offset.Load() <= msg.Offset {
 			if strings.HasPrefix(string(msg.Key), client.Prefix) {
 				if !topic.SendToSubscriber(msg, client, clients) {
 					break
@@ -89,13 +89,10 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 	// Add client to topic prefix tree
 	topic.Tree.Insert(client)
 
-	// Subscriber worker goroutine
-	if client.MsgChan == nil {
-		client.MsgChan = make(chan *pr.Message, 100)
-	}
-
 	if !client.IsWorking {
 		client.IsWorking = true
-		go topic.StartSubscriberWorker(client, clients)
+		client.MsgChan = make(chan *pr.Message, 100)
+		client.Done = make(chan struct{})
+		go topic.StartSubscriberWorker(client, clients, client.MsgChan, client.Done)
 	}
 }
