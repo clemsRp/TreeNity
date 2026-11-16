@@ -49,6 +49,11 @@ func (w *Writer) WriteLine(payload []byte) error {
 }
 
 func (w *Writer) WriteLineTimeout(payload []byte, d time.Duration) error {
+	// Handle nil pointers
+	if w == nil {
+		return errors.New("cannot write on nil pointer")
+	}
+
 	// Handle Thread safety
 	w.mu.Lock()
 	defer w.mu.Unlock()

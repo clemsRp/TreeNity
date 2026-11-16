@@ -14,5 +14,6 @@ const (
 
 	ValidRegex = `^[a-zA-Z0-9_.-]{1,32}$`
 
-	ShutdownTimeout = 5 * time.Second
+	ShutdownTimeout        = 5 * time.Second
+	SubscriberWriteTimeout = 5 * time.Second
 )

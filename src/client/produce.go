@@ -80,7 +80,7 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 		}
 		key, body := parts[0], parts[1]
 
-		if len(key)+len(body) > pr.MaxMessageLength {
+		if len(key) > pr.MaxMessageLength-len(body) {
 			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
 		}
 

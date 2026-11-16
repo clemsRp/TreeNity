@@ -2,6 +2,7 @@ package topics
 
 import (
 	"encoding/json"
+	"strings"
 
 	pr "treenity/src/protocol"
 	h "treenity/src/server/hashmap"
@@ -51,28 +52,113 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 	}
 }
 
-func (td *TopicDatas) StartSubscriberWorker(client *pr.Client, clients *h.Hashmap, ch <-chan *pr.Message, done chan struct{}) {
-	// Deactive worker
-	defer func() {
-		close(done)
-		td.Mu.Lock()
-		client.IsWorking = false
-		td.Mu.Unlock()
-	}()
+func (td *TopicDatas) StartSubscriber(client *pr.Client, clients *h.Hashmap) {
+	td.Mu.Lock()
+	client.MsgChan = nil
+	client.Done = make(chan struct{})
+	client.Stop = make(chan struct{})
+	done, stop := client.Done, client.Stop
+	td.Mu.Unlock()
 
+	go td.subscriberWorker(client, clients, make(chan *pr.Message, 100), done, stop)
+}
+
+func StopSubscriber(client *pr.Client) {
+	if client == nil || client.Stop == nil {
+		return
+	}
+
+	// Stop worker
+	close(client.Stop)
+	client.Stop = nil
+
+	// Close FIFO
+	client.Writer.Close()
+
+	// Wait for true end
+	<-client.Done
+}
+
+func (td *TopicDatas) subscriberWorker(client *pr.Client, clients *h.Hashmap, ch chan *pr.Message, done, stop chan struct{}) {
+	defer close(done)
+
+	// Replay previous messages
+	next, ok := td.replay(client, clients, ch, stop)
+	if !ok {
+		return
+	}
+
+	// Live messages
 	for {
 		select {
 		case <-td.Done:
 			return
+		case <-stop:
+			return
 		case msg := <-ch:
-			if !client.IsActive.Load() || !td.SendToSubscriber(msg, client, clients) {
+			if msg.Offset < next {
+				continue
+			}
+			if !client.IsActive.Load() || !td.deliver(msg, client, clients, stop) {
 				return
 			}
 		}
 	}
 }
 
-func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clients *h.Hashmap) bool {
+func (td *TopicDatas) replay(client *pr.Client, clients *h.Hashmap, ch chan *pr.Message, stop chan struct{}) (uint32, bool) {
+	next := client.Offset.Load()
+
+	for {
+		td.Mu.Lock()
+		if int(next) >= len(td.Topic.Messages) {
+			td.Tree.Insert(client)
+			client.MsgChan = ch
+			td.Mu.Unlock()
+			return next, true
+		}
+
+		batch := td.Topic.Messages[next:]
+		td.Mu.Unlock()
+
+		for _, msg := range batch {
+			select {
+			case <-td.Done:
+				return next, false
+			case <-stop:
+				return next, false
+			default:
+			}
+			if !client.IsActive.Load() {
+				return next, false
+			}
+
+			next = msg.Offset + 1
+			if !strings.HasPrefix(string(msg.Key), client.Prefix) {
+				continue
+			}
+			if !td.deliver(msg, client, clients, stop) {
+				return next, false
+			}
+		}
+	}
+}
+
+func (td *TopicDatas) deliver(msg *pr.Message, client *pr.Client, clients *h.Hashmap, stop chan struct{}) bool {
+	err := td.SendToSubscriber(msg, client)
+	if err == nil {
+		return true
+	}
+
+	select {
+	case <-stop:
+	default:
+		disconnectSubscriber(client.Id, client, clients)
+	}
+	return false
+}
+
+func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client) error {
 	var err error
 
 	msgData := pr.CmdMessageDatas{
@@ -86,7 +172,7 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 
 	payload, err = json.Marshal(msgData)
 	if err != nil {
-		return false
+		return err
 	}
 
 	SendClient := pr.ToClient{
@@ -95,17 +181,10 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client, clien
 
 	payload, err = json.Marshal(SendClient)
 	if err != nil {
-		return false
+		return err
 	}
 
-	writeErr := client.Writer.WriteLine(payload)
-
-	if writeErr != nil {
-		disconnectSubscriber(client.Id, client, clients)
-		return false
-	}
-
-	return true
+	return client.Writer.WriteLineTimeout(payload, pr.SubscriberWriteTimeout)
 }
 
 func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap) {
