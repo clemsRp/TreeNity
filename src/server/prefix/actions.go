@@ -19,15 +19,15 @@ func (t *Tree) Insert(client *pr.Client) error {
 
 	// Handle update
 	if slices.Contains(t.AllClients, client) {
-		t.RemoveClient(client, []rune(client.PreviousPrefix))
+		t.RemoveClient(client, []byte(client.PreviousPrefix))
 	} else {
 		t.AllClients = append(t.AllClients, client)
 	}
 
-	return t.InsertClient(client, []rune(client.Prefix))
+	return t.InsertClient(client, []byte(client.Prefix))
 }
 
-func (t *Tree) InsertClient(client *pr.Client, prefix []rune) error {
+func (t *Tree) InsertClient(client *pr.Client, prefix []byte) error {
 	// Insert client
 	if len(prefix) == 0 {
 		// Handle duplication
@@ -61,10 +61,10 @@ func (t *Tree) Remove(client *pr.Client) error {
 		return errors.New("cannot remove nil pointer")
 	}
 
-	return t.RemoveClient(client, []rune(client.Prefix))
+	return t.RemoveClient(client, []byte(client.Prefix))
 }
 
-func (t *Tree) RemoveClient(client *pr.Client, prefix []rune) error {
+func (t *Tree) RemoveClient(client *pr.Client, prefix []byte) error {
 	// Remove client
 	if len(prefix) == 0 {
 		// Handle missing client
@@ -105,7 +105,7 @@ func (t *Tree) Filter(key string) []*pr.Client {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	return t.FilterClient([]rune(key))
+	return t.FilterClient([]byte(key))
 }
 
 func (t *Tree) GetAllClients() []*pr.Client {
@@ -125,7 +125,7 @@ func (t *Tree) collectAllClients() []*pr.Client {
 	return result
 }
 
-func (t *Tree) FilterClient(key []rune) []*pr.Client {
+func (t *Tree) FilterClient(key []byte) []*pr.Client {
 	// Get root clients
 	filtered_clients := make([]*pr.Client, 0)
 	filtered_clients = append(filtered_clients, t.Clients...)

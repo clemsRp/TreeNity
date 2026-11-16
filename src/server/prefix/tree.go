@@ -6,17 +6,17 @@ import (
 )
 
 type Tree struct {
-	Char       rune
-	Children   map[rune]*Tree
+	Char       byte
+	Children   map[byte]*Tree
 	Clients    []*pr.Client
 	AllClients []*pr.Client
 	mu         sync.RWMutex
 }
 
-func CreateTree(char rune) *Tree {
+func CreateTree(char byte) *Tree {
 	return &Tree{
 		Char:       char,
-		Children:   make(map[rune]*Tree),
+		Children:   make(map[byte]*Tree),
 		Clients:    make([]*pr.Client, 0),
 		AllClients: make([]*pr.Client, 0),
 	}
