@@ -26,10 +26,10 @@ type Client struct {
 	PreviousPrefix string        `json:"-"`
 	IpcPath        string        `json:"ipc"`
 	IsActive       atomic.Bool   `json:"-"`
-	IsWorking      bool          `json:"-"`
 	Writer         *ipc.Writer   `json:"-"`
 	MsgChan        chan *Message `json:"-"`
 	Done           chan struct{} `json:"-"`
+	Stop           chan struct{} `json:"-"`
 }
 
 func (c *Client) MarshalJSON() ([]byte, error) {

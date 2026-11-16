@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
 	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
 	h "treenity/src/server/hashmap"
@@ -34,6 +33,8 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 			os.Remove(client.IpcPath)
 		}
 
+		// Stop previous worker
+		t.StopSubscriber(client)
 		client.Writer.Close()
 
 		// Init client Writer
@@ -58,8 +59,7 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 	return "subscribed to " + command.TopicName, "", nil
 }
 
-// Replay messages and insert client
-func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
+func StartSubscription(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
 	topic, exist := topics.Get(command.TopicName)
 	if !exist {
 		return
@@ -70,29 +70,5 @@ func ReplayAndInsert(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.
 		return
 	}
 
-	topic.Mu.Lock()
-	defer topic.Mu.Unlock()
-
-	for _, msg := range topic.Topic.Messages {
-		if !client.IsActive.Load() {
-			break
-		}
-		if client.Offset.Load() <= msg.Offset {
-			if strings.HasPrefix(string(msg.Key), client.Prefix) {
-				if !topic.SendToSubscriber(msg, client, clients) {
-					break
-				}
-			}
-		}
-	}
-
-	// Add client to topic prefix tree
-	topic.Tree.Insert(client)
-
-	if !client.IsWorking {
-		client.IsWorking = true
-		client.MsgChan = make(chan *pr.Message, 100)
-		client.Done = make(chan struct{})
-		go topic.StartSubscriberWorker(client, clients, client.MsgChan, client.Done)
-	}
+	topic.StartSubscriber(client, clients)
 }

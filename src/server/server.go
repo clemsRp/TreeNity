@@ -97,7 +97,7 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 				if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
 					var command_datas pr.CmdSubscribeDatas
 					if json_err := json.Unmarshal(command.Datas, &command_datas); json_err == nil {
-						cmd.ReplayAndInsert(command_datas, s.Topics, s.Clients)
+						cmd.StartSubscription(command_datas, s.Topics, s.Clients)
 					}
 				}
 			}
