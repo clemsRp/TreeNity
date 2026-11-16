@@ -2,7 +2,6 @@ package client
 
 import (
 	"bufio"
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -100,12 +99,27 @@ func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
 	return nil
 }
 
-func (c *Client) SignalThread(ctx context.Context) {
+func (c *Client) SignalThread() (stop func()) {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	done := make(chan struct{})
+
 	go func() {
-		<-ctx.Done()
-		c.Disconnect()
-		os.Exit(0)
+		select {
+		// Non error case
+		case <-sigCh:
+			c.Disconnect()
+			os.Exit(0)
+
+		// Error case, the main chose the error
+		case <-done:
+		}
 	}()
+
+	return func() {
+		signal.Stop(sigCh)
+		close(done)
+	}
 }
 
 func (c *Client) CheckServerDown() {
@@ -131,11 +145,9 @@ func (c *Client) CheckServerDown() {
 }
 
 func (c *Client) ExecProduce(cmd pr.CmdProduceDatas) *pr.Error {
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer cancel()
-
 	c.CheckServerDown()
-	c.SignalThread(ctx)
+	stop := c.SignalThread()
+	defer stop()
 
 	if cmd.Raw {
 		return c.RawMode(cmd)
