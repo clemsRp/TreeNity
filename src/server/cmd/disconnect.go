@@ -15,7 +15,7 @@ func HandleCmdDisconnect(command pr.CmdDisconnectDatas, clients *h.Hashmap) (str
 			Code:    2,
 		}
 
-	} else if !client.IsActive {
+	} else if !client.IsActive.Load() {
 		return "", "", &pr.Error{
 			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrSubscriberNotActive),
 			Code:    2,
@@ -23,7 +23,7 @@ func HandleCmdDisconnect(command pr.CmdDisconnectDatas, clients *h.Hashmap) (str
 	}
 
 	// Update client status
-	client.IsActive = false
+	client.IsActive.Store(false)
 
 	return "", "", nil
 }

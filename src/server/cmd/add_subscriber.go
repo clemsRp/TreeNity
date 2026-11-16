@@ -33,13 +33,13 @@ func AddNewSubscriber(command pr.CmdSubscribeDatas, clients *h.Hashmap, ipcPath 
 	client := &pr.Client{
 		Id:             command.SubscriberName,
 		Topic:          command.TopicName,
-		Offset:         offset,
 		Prefix:         prefix,
 		PreviousPrefix: prefix,
 		IpcPath:        ipcPath,
 		Writer:         writer,
-		IsActive:       true,
 	}
+	client.Offset.Store(offset)
+	client.IsActive.Store(true)
 
 	// Add client to Hashmap
 	clients.Append(command.SubscriberName, client)
@@ -49,7 +49,7 @@ func AddNewSubscriber(command pr.CmdSubscribeDatas, clients *h.Hashmap, ipcPath 
 
 func ReconnectSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, client *pr.Client, ipcPath string) {
 	// Update client datas
-	client.IsActive = true
+	client.IsActive.Store(true)
 	client.IpcPath = ipcPath
 
 	// Remove client from previous topic tree if needed
@@ -58,7 +58,7 @@ func ReconnectSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, client 
 			old_topic.Tree.Remove(client)
 		}
 		client.Topic = command.TopicName
-		client.Offset = 0
+		client.Offset.Store(0)
 	}
 
 	// Update prefix if needed
@@ -69,6 +69,6 @@ func ReconnectSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, client 
 
 	// Update offset if needed
 	if command.Offset != nil {
-		client.Offset = uint32(*command.Offset)
+		client.Offset.Store(uint32(*command.Offset))
 	}
 }

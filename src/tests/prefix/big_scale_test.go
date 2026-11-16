@@ -52,10 +52,10 @@ func randPrefix(r *rand.Rand) string {
 	}
 	s := sb.String()
 
-	// Cut prefix at a random rune to get partial prefixes
+	// Cut prefix at a random byte to get partial prefixes
 	if r.Intn(4) == 0 {
-		runes := []rune(s)
-		s = string(runes[:r.Intn(len(runes)+1)])
+		bytes := []byte(s)
+		s = string(bytes[:r.Intn(len(bytes)+1)])
 	}
 
 	return s
@@ -79,8 +79,8 @@ func randKey(r *rand.Rand, clients []*pr.Client) string {
 
 	default:
 		// Truncated existing prefix
-		runes := []rune(clients[r.Intn(len(clients))].Prefix)
-		return string(runes[:r.Intn(len(runes)+1)])
+		bytes := []byte(clients[r.Intn(len(clients))].Prefix)
+		return string(bytes[:r.Intn(len(bytes)+1)])
 	}
 }
 
