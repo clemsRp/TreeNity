@@ -113,9 +113,15 @@ check:
 	@$(MAKE) clean
 	@echo "All checks passed successfully."
 
+GO_FILES := find . -type f -name "*.go"
+GO_TEST_FILES := $(GO_FILES) \( -path "$(TESTS_DIR)/*" -o -name "*_test.go" \)
+GO_SRC_FILES := $(GO_FILES) ! -path "$(TESTS_DIR)/*" ! -name "*_test.go"
+
 stats:
-	@echo "Go files: $$(find . -name "*.go" -type f | wc -l)"
-	@echo "Total lines: $$(find . -name "*.go" -type f -exec cat {} + | wc -l)"
+	@echo "Go files: $$($(GO_FILES) | wc -l)"
+	@echo "Total lines: $$($(GO_FILES) -exec cat {} + | wc -l)"
+	@echo "Source files lines: $$($(GO_SRC_FILES) -exec cat {} + | wc -l)"
+	@echo "Test files lines: $$($(GO_TEST_FILES) -exec cat {} + | wc -l)"
 
 # Clean
 clean:
