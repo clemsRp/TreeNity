@@ -1,6 +1,8 @@
 package scenarios
 
 import (
+	"syscall"
+	"time"
 	pr "treenity/src/protocol"
 )
 
@@ -80,4 +82,39 @@ type IpcStep struct {
 type IpcScenario struct {
 	Name  string
 	Steps []IpcStep
+}
+
+// Pipeline scenarios
+type PipelineAction string
+
+const (
+	PipelineActionRun        PipelineAction = "run"
+	PipelineActionSubscribe  PipelineAction = "subscribe"
+	PipelineActionExpect     PipelineAction = "expect"
+	PipelineActionSilent     PipelineAction = "silent"
+	PipelineActionSignal     PipelineAction = "signal"
+	PipelineActionWait       PipelineAction = "wait"
+	PipelineActionStopServer PipelineAction = "stop_server"
+)
+
+type PipelineStep struct {
+	Action PipelineAction
+
+	Args  []string
+	Stdin string
+
+	Proc   string
+	Signal syscall.Signal
+
+	WantOut    []string
+	WantRegexp bool
+	WantErr    string
+	WantCode   int
+
+	Timeout time.Duration
+}
+
+type PipelineScenario struct {
+	Name  string
+	Steps []PipelineStep
 }

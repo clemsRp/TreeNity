@@ -42,14 +42,14 @@ func TestThreadSafe(t *testing.T) {
 				key := fmt.Sprintf("key-%d-%d", workerID, j)
 
 				// Read
-				_, _ = myMap.Get(key)
+				myMap.Get(key)
 
 				// Check data
-				_ = myMap.Contains(key)
+				myMap.Contains(key)
 
 				// Delete
 				if j%2 == 0 {
-					_ = myMap.Delete(key)
+					myMap.Delete(key)
 				}
 			}
 		}(i)

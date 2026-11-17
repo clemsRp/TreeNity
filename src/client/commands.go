@@ -27,6 +27,7 @@ func (c *Client) HandleCommand(ctx *kong.Context) *pr.Error {
 				Code:    1,
 			}
 		}
+
 	} else {
 		return &pr.Error{
 			Message: pr.ErrInvalidIpcPath,
