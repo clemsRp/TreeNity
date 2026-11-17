@@ -9,34 +9,19 @@ import (
 )
 
 func (td *TopicDatas) dispatch(msg pr.Message) {
-	type target struct {
-		ch   chan *pr.Message
-		done chan struct{}
-	}
-
 	td.Mu.Lock()
+	defer td.Mu.Unlock()
+
 	msg.Offset = uint32(len(td.Topic.Messages))
-	msgCopy := msg
-	td.Topic.Messages = append(td.Topic.Messages, &msgCopy)
+	td.Topic.Messages = append(td.Topic.Messages, &msg)
 
-	var targets []target
-	subscribers := td.Tree.Filter(string(msg.Key))
-
-	// Get message targets
-	for _, client := range subscribers {
-		if client.IsActive.Load() && client.Offset.Load() <= msg.Offset && client.MsgChan != nil {
-			targets = append(targets, target{client.MsgChan, client.Done})
+	for _, client := range td.Tree.Filter(string(msg.Key)) {
+		if client.Notify == nil {
+			continue
 		}
-	}
-	td.Mu.Unlock()
-
-	// Conserv message order
-	for _, t := range targets {
 		select {
-		case t.ch <- &msgCopy: // Send message
-		case <-t.done: // Wroker dead, continue to next subscriber
-		case <-td.Done: // Server shutdown
-			return
+		case client.Notify <- struct{}{}:
+		default:
 		}
 	}
 }
@@ -54,13 +39,15 @@ func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
 
 func (td *TopicDatas) StartSubscriber(client *pr.Client, clients *h.Hashmap) {
 	td.Mu.Lock()
-	client.MsgChan = nil
+	notify := make(chan struct{}, 1)
+	client.Notify = notify
 	client.Done = make(chan struct{})
 	client.Stop = make(chan struct{})
 	done, stop := client.Done, client.Stop
+	_ = td.Tree.Insert(client)
 	td.Mu.Unlock()
 
-	go td.subscriberWorker(client, clients, make(chan *pr.Message, 100), done, stop)
+	go td.subscriberWorker(client, clients, notify, done, stop)
 }
 
 func StopSubscriber(client *pr.Client) {
@@ -79,58 +66,42 @@ func StopSubscriber(client *pr.Client) {
 	<-client.Done
 }
 
-func (td *TopicDatas) subscriberWorker(client *pr.Client, clients *h.Hashmap, ch chan *pr.Message, done, stop chan struct{}) {
+func (td *TopicDatas) subscriberWorker(client *pr.Client, clients *h.Hashmap, notify chan struct{}, done, stop chan struct{}) {
 	defer close(done)
 
-	// Replay previous messages
-	next, ok := td.replay(client, clients, ch, stop)
-	if !ok {
-		return
-	}
-
-	// Live messages
-	for {
-		select {
-		case <-td.Done:
-			return
-		case <-stop:
-			return
-		case msg := <-ch:
-			if msg.Offset < next {
-				continue
-			}
-			if !client.IsActive.Load() || !td.deliver(msg, client, clients, stop) {
-				return
-			}
-		}
-	}
-}
-
-func (td *TopicDatas) replay(client *pr.Client, clients *h.Hashmap, ch chan *pr.Message, stop chan struct{}) (uint32, bool) {
 	next := client.Offset.Load()
 
 	for {
+		var batch []*pr.Message
 		td.Mu.Lock()
-		if int(next) >= len(td.Topic.Messages) {
-			td.Tree.Insert(client)
-			client.MsgChan = ch
-			td.Mu.Unlock()
-			return next, true
+		if int(next) < len(td.Topic.Messages) {
+			// Messages are append-only and never modified: snapshot is safe
+			batch = td.Topic.Messages[next:]
 		}
-
-		batch := td.Topic.Messages[next:]
 		td.Mu.Unlock()
+
+		// Caught up: wait for a new message
+		if len(batch) == 0 {
+			select {
+			case <-td.Done:
+				return
+			case <-stop:
+				return
+			case <-notify:
+			}
+			continue
+		}
 
 		for _, msg := range batch {
 			select {
 			case <-td.Done:
-				return next, false
+				return
 			case <-stop:
-				return next, false
+				return
 			default:
 			}
 			if !client.IsActive.Load() {
-				return next, false
+				return
 			}
 
 			next = msg.Offset + 1
@@ -138,11 +109,49 @@ func (td *TopicDatas) replay(client *pr.Client, clients *h.Hashmap, ch chan *pr.
 				continue
 			}
 			if !td.deliver(msg, client, clients, stop) {
-				return next, false
+				return
 			}
 		}
 	}
 }
+
+// func (td *TopicDatas) replay(client *pr.Client, clients *h.Hashmap, ch chan *pr.Message, stop chan struct{}) (uint32, bool) {
+// 	next := client.Offset.Load()
+
+// 	for {
+// 		td.Mu.Lock()
+// 		if int(next) >= len(td.Topic.Messages) {
+// 			td.Tree.Insert(client)
+// 			client.MsgChan = ch
+// 			td.Mu.Unlock()
+// 			return next, true
+// 		}
+
+// 		batch := td.Topic.Messages[next:]
+// 		td.Mu.Unlock()
+
+// 		for _, msg := range batch {
+// 			select {
+// 			case <-td.Done:
+// 				return next, false
+// 			case <-stop:
+// 				return next, false
+// 			default:
+// 			}
+// 			if !client.IsActive.Load() {
+// 				return next, false
+// 			}
+
+// 			next = msg.Offset + 1
+// 			if !strings.HasPrefix(string(msg.Key), client.Prefix) {
+// 				continue
+// 			}
+// 			if !td.deliver(msg, client, clients, stop) {
+// 				return next, false
+// 			}
+// 		}
+// 	}
+// }
 
 func (td *TopicDatas) deliver(msg *pr.Message, client *pr.Client, clients *h.Hashmap, stop chan struct{}) bool {
 	err := td.SendToSubscriber(msg, client)
@@ -159,8 +168,6 @@ func (td *TopicDatas) deliver(msg *pr.Message, client *pr.Client, clients *h.Has
 }
 
 func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client) error {
-	var err error
-
 	msgData := pr.CmdMessageDatas{
 		Key:       msg.Key,
 		Body:      msg.Body,
@@ -168,9 +175,7 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client) error
 		TopicName: td.Topic.Name,
 	}
 
-	var payload []byte
-
-	payload, err = json.Marshal(msgData)
+	payload, err := json.Marshal(msgData)
 	if err != nil {
 		return err
 	}

@@ -27,7 +27,7 @@ type Client struct {
 	IpcPath        string        `json:"ipc"`
 	IsActive       atomic.Bool   `json:"-"`
 	Writer         *ipc.Writer   `json:"-"`
-	MsgChan        chan *Message `json:"-"`
+	Notify         chan struct{} `json:"-"`
 	Done           chan struct{} `json:"-"`
 	Stop           chan struct{} `json:"-"`
 }
