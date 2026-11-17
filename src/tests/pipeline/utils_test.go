@@ -1,6 +1,8 @@
 package pipeline
 
 import (
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	sce "treenity/src/tests/scenarios"
@@ -48,7 +50,7 @@ func (e *env) checkCode(i int, step sce.PipelineStep, code int, stderr string) {
 
 func (e *env) killSubscribers() {
 	for _, sub := range e.subs {
-		_ = sub.cmd.Process.Kill()
+		sub.cmd.Process.Kill()
 		<-sub.exited
 	}
 }
@@ -59,4 +61,16 @@ func splitLines(s string) []string {
 		return nil
 	}
 	return strings.Split(s, "\n")
+}
+
+func leftoverFIFOs(ipcPath string) []string {
+	var left []string
+	if ipcPath == "" {
+		return nil
+	}
+	if _, err := os.Lstat(ipcPath); err == nil {
+		left = append(left, ipcPath)
+	}
+	clients, _ := filepath.Glob(ipcPath + ".*")
+	return append(left, clients...)
 }

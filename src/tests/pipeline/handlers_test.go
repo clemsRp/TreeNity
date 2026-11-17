@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"testing"
@@ -21,7 +20,7 @@ func (e *env) exec_run(t *testing.T, step sce.PipelineStep, timeout time.Duratio
 	cmd.Stdin = strings.NewReader(step.Stdin)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	_ = cmd.Run()
+	cmd.Run()
 
 	if ctx.Err() != nil {
 		t.Fatalf("step %d: %v timed out after %v (server blocked?)", i, step.Args, timeout)
@@ -55,7 +54,7 @@ func (e *env) exec_subscribe(t *testing.T, step sce.PipelineStep, timeout time.D
 			sub.lines <- scanner.Text()
 		}
 		close(sub.lines)
-		_ = cmd.Wait()
+		cmd.Wait()
 		close(sub.exited)
 	}()
 	e.subs[step.Proc] = sub
@@ -111,17 +110,25 @@ func (e *env) exec_wait(t *testing.T, step sce.PipelineStep, timeout time.Durati
 }
 
 func (e *env) exec_stop(t *testing.T, step sce.PipelineStep, timeout time.Duration, i int) {
-	if err := e.server.Process.Signal(syscall.SIGINT); err != nil {
+	sig := step.Signal
+	if sig == 0 {
+		sig = syscall.SIGINT
+	}
+	if err := e.server.Process.Signal(sig); err != nil {
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
-	go func() { _ = e.server.Wait(); close(done) }()
+	go func() { e.server.Wait(); close(done) }()
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):
 		t.Fatalf("step %d: server did not stop", i)
 	}
-	if left, _ := filepath.Glob(e.ipcPath + "*"); len(left) > 0 {
+
+	if sig == syscall.SIGKILL {
+		return
+	}
+	if left := leftoverFIFOs(e.ipcPath); len(left) > 0 {
 		t.Fatalf("step %d: FIFOs left behind: %v", i, left)
 	}
 }

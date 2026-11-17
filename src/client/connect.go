@@ -33,7 +33,7 @@ func (c *Client) Connect(path string) error {
 func (c *Client) Disconnect() {
 	// Close and Remove Writer and Reader only 1 time
 	c.disconnectOnce.Do(func() {
-		_ = c.Reader.Close()
-		_ = c.Writer.Close()
+		c.Reader.Close()
+		c.Writer.Close()
 	})
 }

@@ -34,10 +34,10 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func startServer(t *testing.T) (*exec.Cmd, string) {
+func startServer(t *testing.T) (srv *exec.Cmd, ipcPath string) {
 	t.Helper()
 
-	srv := exec.Command(serverBin)
+	srv = exec.Command(serverBin)
 	stdout, err := srv.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +45,14 @@ func startServer(t *testing.T) (*exec.Cmd, string) {
 	if err := srv.Start(); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = srv.Process.Kill() })
+
+	// Clean all FIFO paths
+	t.Cleanup(func() {
+		for _, path := range leftoverFIFOs(ipcPath) {
+			os.Remove(path)
+		}
+	})
+	t.Cleanup(func() { srv.Process.Kill() })
 
 	line, err := bufio.NewReader(stdout).ReadString('\n')
 	if err != nil {
