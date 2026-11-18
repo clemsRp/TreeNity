@@ -35,4 +35,4 @@ jobs:
           fetch-depth: 0
 
       - name: Run go tests
-        run: make check
+        run: make test-race
