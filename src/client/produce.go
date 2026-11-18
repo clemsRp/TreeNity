@@ -14,6 +14,47 @@ import (
 	pr "treenity/src/protocol"
 )
 
+func (c *Client) ExecProduce(cmd pr.CmdProduceDatas) *pr.Error {
+	c.CheckServerDown()
+	stop := c.SignalThread()
+	defer stop()
+
+	if cmd.Raw {
+		return c.RawMode(cmd)
+	} else {
+		return c.TextMode(cmd)
+	}
+}
+
+func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		line := scanner.Text()
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			return &pr.Error{Message: pr.ErrInvalidFormat, Code: 1}
+		}
+		key, body := parts[0], parts[1]
+
+		if len(key) > pr.MaxMessageLength-len(body) {
+			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
+		}
+
+		msgStruct := pr.CmdMessageDatas{
+			Key:       []byte(key),
+			Body:      []byte(body),
+			TopicName: cmd.TopicName,
+		}
+		if sendErr := c.Send(msgStruct, pr.CmdMessage); sendErr != nil {
+			return sendErr
+		}
+	}
+	if scanErr := scanner.Err(); scanErr != nil {
+		return &pr.Error{Message: scanErr.Error(), Code: 1}
+	}
+	return nil
+}
+
 func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 	reader := bufio.NewReader(os.Stdin)
 
@@ -70,35 +111,6 @@ func (c *Client) RawMode(cmd pr.CmdProduceDatas) *pr.Error {
 	return nil
 }
 
-func (c *Client) TextMode(cmd pr.CmdProduceDatas) *pr.Error {
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.SplitN(line, ":", 2)
-		if len(parts) != 2 {
-			return &pr.Error{Message: pr.ErrInvalidFormat, Code: 1}
-		}
-		key, body := parts[0], parts[1]
-
-		if len(key) > pr.MaxMessageLength-len(body) {
-			return &pr.Error{Message: pr.ErrMessageTooLong, Code: 1}
-		}
-
-		msgStruct := pr.CmdMessageDatas{
-			Key:       []byte(key),
-			Body:      []byte(body),
-			TopicName: cmd.TopicName,
-		}
-		if sendErr := c.Send(msgStruct, pr.CmdMessage); sendErr != nil {
-			return sendErr
-		}
-	}
-	if scanErr := scanner.Err(); scanErr != nil {
-		return &pr.Error{Message: scanErr.Error(), Code: 1}
-	}
-	return nil
-}
-
 func (c *Client) SignalThread() (stop func()) {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -142,16 +154,4 @@ func (c *Client) CheckServerDown() {
 			}
 		}
 	}()
-}
-
-func (c *Client) ExecProduce(cmd pr.CmdProduceDatas) *pr.Error {
-	c.CheckServerDown()
-	stop := c.SignalThread()
-	defer stop()
-
-	if cmd.Raw {
-		return c.RawMode(cmd)
-	} else {
-		return c.TextMode(cmd)
-	}
 }

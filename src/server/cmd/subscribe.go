@@ -58,17 +58,3 @@ func HandleCmdSubscribe(command pr.CmdSubscribeDatas, topics *t.Topics, clients 
 
 	return "subscribed to " + command.TopicName, "", nil
 }
-
-func StartSubscription(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
-	topic, exist := topics.Get(command.TopicName)
-	if !exist {
-		return
-	}
-
-	client, err := clients.Get(command.SubscriberName)
-	if err != nil || client == nil {
-		return
-	}
-
-	topic.StartSubscriber(client, clients)
-}
