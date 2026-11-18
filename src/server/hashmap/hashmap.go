@@ -6,19 +6,19 @@ import (
 )
 
 type Hashmap struct {
-	Size   int
-	Length int
-	Nodes  []*Node
-	mu     sync.RWMutex
+	HashmapSize int
+	Length      int
+	Nodes       []*Node
+	mu          sync.RWMutex
 }
 
 func CreateHashmap(size int) *Hashmap {
 	nodes := make([]*Node, size)
 
 	return &Hashmap{
-		Nodes:  nodes,
-		Size:   size,
-		Length: 0,
+		Nodes:       nodes,
+		HashmapSize: size,
+		Length:      0,
 	}
 }
 

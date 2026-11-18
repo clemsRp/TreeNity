@@ -1,11 +1,48 @@
 package cmd
 
 import (
+	"fmt"
 	pr "treenity/src/protocol"
 	"treenity/src/protocol/ipc"
 	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
 )
+
+func CheckSubscribeCmd(command pr.CmdSubscribeDatas, topics *t.Topics, ipcPath string) *pr.Error {
+	// Check response channel
+	if ipcPath == "" {
+		return &pr.Error{
+			Message: "missing client IPC path",
+			Code:    1,
+		}
+	}
+
+	// Check subscriber is valid name
+	if !IsValidId(command.SubscriberName) {
+		return &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.SubscriberName, pr.ErrInvalidName),
+			Code:    1,
+		}
+	}
+	// Check topic is valid name
+	if !IsValidId(command.TopicName) {
+		return &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrInvalidName),
+			Code:    1,
+		}
+	}
+
+	// Check topic exist
+	_, exist := topics.Get(command.TopicName)
+	if !exist {
+		return &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", command.TopicName, pr.ErrTopicDoesNotExist),
+			Code:    2,
+		}
+	}
+
+	return nil
+}
 
 func AddNewSubscriber(command pr.CmdSubscribeDatas, clients *h.Hashmap, ipcPath string) *pr.Error {
 	// Handle missing offset option
@@ -71,4 +108,18 @@ func ReconnectSubscriber(command pr.CmdSubscribeDatas, topics *t.Topics, client 
 	if command.Offset != nil {
 		client.Offset.Store(uint32(*command.Offset))
 	}
+}
+
+func StartSubscription(command pr.CmdSubscribeDatas, topics *t.Topics, clients *h.Hashmap) {
+	topic, exist := topics.Get(command.TopicName)
+	if !exist {
+		return
+	}
+
+	client, err := clients.Get(command.SubscriberName)
+	if err != nil || client == nil {
+		return
+	}
+
+	topic.StartSubscriber(client, clients)
 }

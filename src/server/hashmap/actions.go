@@ -11,7 +11,7 @@ func (h *Hashmap) Append(key string, value *pr.Client) {
 	defer h.mu.Unlock()
 
 	// Get hash
-	hash := CalculateHash(key, len(h.Nodes))
+	hash := CalculateHash(key, h.HashmapSize)
 
 	// Handle first element
 	if h.Nodes[hash] == nil {
@@ -30,7 +30,7 @@ func (h *Hashmap) Get(key string) (*pr.Client, error) {
 	defer h.mu.RUnlock()
 
 	// Get hash
-	hash := CalculateHash(key, len(h.Nodes))
+	hash := CalculateHash(key, h.HashmapSize)
 
 	if h.Nodes[hash] == nil {
 		return nil, fmt.Errorf("'%s' %s", key, pr.ErrInvalidKey)
@@ -46,7 +46,7 @@ func (h *Hashmap) Delete(key string) error {
 	defer h.mu.Unlock()
 
 	// Get hash
-	hash := CalculateHash(key, len(h.Nodes))
+	hash := CalculateHash(key, h.HashmapSize)
 
 	if h.Nodes[hash] == nil {
 		return fmt.Errorf("'%s' %s", key, pr.ErrInvalidKey)
@@ -81,7 +81,7 @@ func (h *Hashmap) Contains(key string) bool {
 	defer h.mu.RUnlock()
 
 	// Get hash
-	hash := CalculateHash(key, len(h.Nodes))
+	hash := CalculateHash(key, h.HashmapSize)
 
 	if h.Nodes[hash] == nil {
 		return false
