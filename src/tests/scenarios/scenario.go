@@ -39,6 +39,35 @@ type HashmapScenario struct {
 	Steps []HashmapStep
 }
 
+// Topic scenarios
+type TopicAction string
+
+const (
+	TopicActionCreate    TopicAction = "create"
+	TopicActionDelete    TopicAction = "delete"
+	TopicActionGet       TopicAction = "get"
+	TopicActionList      TopicAction = "list"
+	TopicActionStopAll   TopicAction = "stop_all"
+	TopicActionIsStopped TopicAction = "is_stopped"
+)
+
+type TopicStep struct {
+	Action    TopicAction
+	TopicName string
+
+	WantErr     bool
+	WantCode    int
+	WantExist   bool
+	WantNames   []string
+	WantStopped bool
+	WantSame    bool
+}
+
+type TopicScenario struct {
+	Name  string
+	Steps []TopicStep
+}
+
 // Prefix Tree scenarios
 type PrefixAction string
 
