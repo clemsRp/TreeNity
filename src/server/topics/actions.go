@@ -1,6 +1,8 @@
 package topics
 
 import (
+	"fmt"
+	"slices"
 	pr "treenity/src/protocol"
 	p "treenity/src/server/prefix"
 )
@@ -9,6 +11,12 @@ func (t *Topics) Create(topic_name string) *TopicDatas {
 	// Handle Thread safety
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
+	// Check topic exist
+	_, exist := t.AllTopics[topic_name]
+	if exist {
+		return t.AllTopics[topic_name]
+	}
 
 	// Create topic
 	t.AllTopics[topic_name] = &TopicDatas{
@@ -25,6 +33,31 @@ func (t *Topics) Create(topic_name string) *TopicDatas {
 	t.TopicsList = append(t.TopicsList, topic_name)
 
 	return t.AllTopics[topic_name]
+}
+
+func (t *Topics) Delete(topic_name string) *pr.Error {
+	// Handle Thread safety
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Check topic exist
+	topic, exist := t.AllTopics[topic_name]
+	if !exist {
+		return &pr.Error{
+			Message: fmt.Sprintf("'%s' %s", topic_name, pr.ErrTopicDoesNotExist),
+			Code:    2,
+		}
+	}
+
+	topic.Stop()
+
+	// Delete topic
+	delete(t.AllTopics, topic_name)
+	t.TopicsList = slices.DeleteFunc(t.TopicsList, func(n string) bool {
+		return n == topic_name
+	})
+
+	return nil
 }
 
 func (t *Topics) Get(topic_name string) (*TopicDatas, bool) {
