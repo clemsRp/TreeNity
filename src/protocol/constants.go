@@ -8,7 +8,6 @@ const (
 	FnvPrime       = 1099511628211
 	FnvOffsetBasis = 14695981039346656037
 
-	MaxIdCharacters    = 32
 	ClientsHashmapSize = 64
 	MaxMessageLength   = 1024
 

@@ -27,7 +27,7 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, *pr.Error) {
 		}
 
 		// Run handler
-		res, datas, err = cmd.HandleCmdCreate(command_datas, s.Topics, s.Clients)
+		res, datas, err = cmd.HandleCmdCreate(command_datas, s.Topics)
 
 	case pr.CmdList:
 		var command_datas pr.CmdListDatas
@@ -42,7 +42,7 @@ func (s *Server) HandleCommands(command pr.ToServer) (string, any, *pr.Error) {
 		}
 
 		// Run handler
-		res, datas, err = cmd.HandleCmdList(command_datas, s.Topics)
+		res, datas, err = cmd.HandleCmdList(s.Topics)
 
 	case pr.CmdInfo:
 		var command_datas pr.CmdInfoDatas

@@ -24,7 +24,7 @@ func clientAlive(path string) bool {
 	return true
 }
 
-func SendResponse(writer *ipc.Writer, command pr.ToServer, res string, datas any, server_err *pr.Error) *pr.Error {
+func SendResponse(writer *ipc.Writer, res string, datas any, server_err *pr.Error) *pr.Error {
 	// Convert cmd_struct to Raw Message
 	rawDatas, marsh_err := json.Marshal(datas)
 	if marsh_err != nil {

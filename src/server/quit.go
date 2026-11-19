@@ -58,7 +58,7 @@ func (s *Server) gracefulShutdown(lineChan <-chan string, errorChan <-chan error
 				s.HandleCommands(command)
 			default:
 				if w, err := ipc.NewWriter(command.Path); err == nil {
-					cmd.SendResponse(w, command, "", "",
+					cmd.SendResponse(w, "", "",
 						&pr.Error{Message: "server shutting down", Code: 3})
 					w.Close()
 				}
