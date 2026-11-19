@@ -26,7 +26,7 @@ func (td *TopicDatas) dispatch(msg pr.Message) {
 	}
 }
 
-func (td *TopicDatas) DistributeMessages(clients *h.Hashmap) {
+func (td *TopicDatas) DistributeMessages() {
 	for {
 		select {
 		case <-td.Done:
@@ -124,7 +124,7 @@ func (td *TopicDatas) deliver(msg *pr.Message, client *pr.Client, clients *h.Has
 	select {
 	case <-stop:
 	default:
-		disconnectSubscriber(client.Id, client, clients)
+		disconnectSubscriber(client, clients)
 	}
 	return false
 }
@@ -154,7 +154,7 @@ func (td *TopicDatas) SendToSubscriber(msg *pr.Message, client *pr.Client) error
 	return client.Writer.WriteLineTimeout(payload, pr.SubscriberWriteTimeout)
 }
 
-func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap) {
+func disconnectSubscriber(client *pr.Client, clients *h.Hashmap) {
 
 	if client != nil {
 		if client.Writer != nil {
@@ -165,7 +165,7 @@ func disconnectSubscriber(clientId string, client *pr.Client, clients *h.Hashmap
 	}
 
 	if clients != nil {
-		if c, err := clients.Get(clientId); err == nil && c != nil && c != client {
+		if c, err := clients.Get(client.Id); err == nil && c != nil && c != client {
 			if c.Writer != nil {
 				c.Writer.Close()
 				c.Writer = nil

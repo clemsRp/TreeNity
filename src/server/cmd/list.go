@@ -6,7 +6,7 @@ import (
 	t "treenity/src/server/topics"
 )
 
-func HandleCmdList(command pr.CmdListDatas, topics *t.Topics) (string, any, *pr.Error) {
+func HandleCmdList(topics *t.Topics) (string, any, *pr.Error) {
 	// Get Topic names
 	topic_names := topics.GetTopicNames()
 

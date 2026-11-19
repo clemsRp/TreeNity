@@ -29,7 +29,7 @@ func NewServer() *Server {
 	return &Server{
 		Entrypoint: fmt.Sprintf("%s%d", pr.EntryPoint, os.Getpid()),
 		Topics:     t.NewTopics(),
-		Clients:    h.CreateHashmap(int(pr.ClientsHashmapSize)),
+		Clients:    h.CreateHashmap(pr.ClientsHashmapSize),
 	}
 }
 
@@ -46,7 +46,7 @@ func ReadChannel(reader *ipc.Reader, lineChan chan string, errorChan chan error)
 	}()
 }
 
-func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan string, errorChan chan error, ctx context.Context, wg *sync.WaitGroup) {
+func (s *Server) RequestAction(reader *ipc.Reader, lineChan chan string, errorChan chan error, ctx context.Context, wg *sync.WaitGroup) {
 	go func() error {
 		defer wg.Done()
 
@@ -57,7 +57,7 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 				if reader != nil {
 					reader.Close()
 				}
-				return err
+				return nil
 
 			case errorGet := <-errorChan:
 				if errorGet != nil {
@@ -91,7 +91,7 @@ func (s *Server) RequestAction(reader *ipc.Reader, err error, lineChan chan stri
 				}
 
 				// Send response to client
-				send_err := cmd.SendResponse(writer, command, res, datas, err)
+				send_err := cmd.SendResponse(writer, res, datas, err)
 				writer.Close()
 
 				if command.Command == pr.CmdSubscribe && err == nil && send_err == nil {
@@ -127,7 +127,7 @@ func (s *Server) Start() error {
 	errorChan := make(chan error)
 
 	ReadChannel(reader, lineChan, errorChan)
-	s.RequestAction(reader, err, lineChan, errorChan, ctx, &wg)
+	s.RequestAction(reader, lineChan, errorChan, ctx, &wg)
 
 	<-ctx.Done()
 	wg.Wait()

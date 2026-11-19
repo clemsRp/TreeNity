@@ -3,11 +3,10 @@ package cmd
 import (
 	"fmt"
 	pr "treenity/src/protocol"
-	h "treenity/src/server/hashmap"
 	t "treenity/src/server/topics"
 )
 
-func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics, clients *h.Hashmap) (string, any, *pr.Error) {
+func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics) (string, any, *pr.Error) {
 	// Handle invalid topic name
 	if !IsValidId(command.TopicName) {
 		return "", "", &pr.Error{
@@ -25,7 +24,7 @@ func HandleCmdCreate(command pr.CmdCreateDatas, topics *t.Topics, clients *h.Has
 	// Create Topic
 	new_topic := topics.Create(command.TopicName)
 
-	go new_topic.DistributeMessages(clients)
+	go new_topic.DistributeMessages()
 
 	return "topic created", "", nil
 }

@@ -9,7 +9,7 @@ import (
 type TopicDatas struct {
 	Topic *pr.Topic
 	Tree  *p.Tree
-	Mu    sync.RWMutex
+	Mu    sync.Mutex
 	Done  chan struct{}
 	once  sync.Once
 }
